@@ -1,0 +1,1014 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta name="theme-color" content="#FAFAFA">
+
+  <title>TodoDelivery — Iniciar sesión</title>
+
+  <style>
+    :root {
+      --orange: #E65100;
+      --orange-light: #FF6D00;
+      --yellow: #FFB300;
+      --green: #00897B;
+      --blue: #1565C0;
+
+      --dark: #111827;
+      --gray: #6B7280;
+      --light-gray: #E5E7EB;
+
+      --background: #FAFAFA;
+      --white: #FFFFFF;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        sans-serif;
+
+      background: var(--background);
+      color: var(--dark);
+
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeSpeed;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+
+    /* ========================================
+       CONTENEDOR
+       ======================================== */
+
+    .page {
+      min-height: 100vh;
+
+      display: grid;
+      grid-template-columns: 42% 58%;
+
+      overflow: hidden;
+    }
+
+
+    /* ========================================
+       PANEL VISUAL
+       ======================================== */
+
+    .visual {
+      position: relative;
+
+      min-height: 100vh;
+
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+
+      padding: 42px;
+
+      background:
+        linear-gradient(
+          145deg,
+          #E65100 0%,
+          #F4511E 48%,
+          #FF6D00 100%
+        );
+
+      overflow: hidden;
+    }
+
+
+    /* Elementos geométricos */
+
+    .shape {
+      position: absolute;
+
+      pointer-events: none;
+
+      transform: translateZ(0);
+    }
+
+    .shape-one {
+      width: 260px;
+      height: 260px;
+
+      right: -110px;
+      top: 14%;
+
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 50%;
+    }
+
+    .shape-two {
+      width: 180px;
+      height: 180px;
+
+      left: -90px;
+      bottom: 18%;
+
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 50%;
+    }
+
+    .shape-three {
+      width: 90px;
+      height: 90px;
+
+      right: 16%;
+      bottom: 9%;
+
+      background: rgba(255,255,255,.10);
+
+      border-radius: 22px;
+
+      transform:
+        rotate(18deg)
+        translateZ(0);
+    }
+
+
+    /* ========================================
+       LOGO
+       ======================================== */
+
+    .brand {
+      position: relative;
+      z-index: 2;
+
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      color: #FFFFFF;
+
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background: #FFFFFF;
+      color: var(--orange);
+
+      border-radius: 12px;
+
+      font-size: 18px;
+      font-weight: 850;
+      letter-spacing: -2px;
+
+      box-shadow: 0 3px 0 rgba(0,0,0,.10);
+    }
+
+
+    /* ========================================
+       MENSAJE PRINCIPAL
+       ======================================== */
+
+    .visual-content {
+      position: relative;
+      z-index: 2;
+
+      max-width: 440px;
+    }
+
+    .visual-content .eyebrow {
+      margin-bottom: 14px;
+
+      color: rgba(255,255,255,.78);
+
+      font-size: 12px;
+      font-weight: 700;
+
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .visual-content h2 {
+      max-width: 420px;
+
+      color: #FFFFFF;
+
+      font-size: clamp(34px, 4vw, 56px);
+      line-height: 1.02;
+
+      letter-spacing: -2.5px;
+      font-weight: 800;
+    }
+
+    .visual-content h2 span {
+      color: #FFE082;
+    }
+
+    .visual-content p {
+      max-width: 370px;
+
+      margin-top: 22px;
+
+      color: rgba(255,255,255,.82);
+
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+
+    /* ========================================
+       RUTA DECORATIVA
+       ======================================== */
+
+    .route {
+      position: absolute;
+
+      left: 12%;
+      right: 8%;
+      bottom: 15%;
+
+      height: 90px;
+
+      pointer-events: none;
+    }
+
+    .route-line {
+      position: absolute;
+
+      width: 100%;
+      height: 100%;
+
+      border-bottom: 2px dashed rgba(255,255,255,.30);
+
+      border-radius: 50%;
+    }
+
+    .route-point {
+      position: absolute;
+
+      width: 14px;
+      height: 14px;
+
+      border-radius: 50%;
+
+      background: #FFFFFF;
+
+      box-shadow:
+        0 0 0 5px rgba(255,255,255,.15);
+    }
+
+    .route-point.start {
+      left: 5%;
+      bottom: 12%;
+    }
+
+    .route-point.end {
+      right: 7%;
+      top: 8%;
+
+      background: #FFE082;
+    }
+
+
+    /* ========================================
+       COPYRIGHT
+       ======================================== */
+
+    .visual-footer {
+      position: relative;
+      z-index: 2;
+
+      color: rgba(255,255,255,.65);
+
+      font-size: 11px;
+    }
+
+
+    /* ========================================
+       PANEL LOGIN
+       ======================================== */
+
+    .login-area {
+      min-height: 100vh;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      padding: 32px;
+    }
+
+    .login {
+      width: 100%;
+      max-width: 410px;
+    }
+
+
+    /* ========================================
+       ENCABEZADO
+       ======================================== */
+
+    .login-header {
+      margin-bottom: 32px;
+    }
+
+    .login-header .mini-mark {
+      width: 38px;
+      height: 38px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      margin-bottom: 24px;
+
+      border: 1px solid var(--light-gray);
+      border-radius: 11px;
+
+      background: #FFFFFF;
+      color: var(--orange);
+
+      font-size: 16px;
+      font-weight: 850;
+      letter-spacing: -2px;
+    }
+
+    .login-header h1 {
+      font-size: 32px;
+      line-height: 1.1;
+
+      letter-spacing: -1.2px;
+      font-weight: 780;
+    }
+
+    .login-header p {
+      margin-top: 9px;
+
+      color: var(--gray);
+
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+
+    /* ========================================
+       FORMULARIO
+       ======================================== */
+
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .input-wrapper input {
+      width: 100%;
+      height: 52px;
+
+      padding: 0 15px;
+
+      border: 1px solid var(--light-gray);
+      border-radius: 11px;
+
+      outline: none;
+
+      background: #FFFFFF;
+      color: var(--dark);
+
+      font-size: 15px;
+
+      transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+    }
+
+    .input-wrapper input::placeholder {
+      color: #9CA3AF;
+    }
+
+    .input-wrapper input:focus {
+      border-color: var(--orange);
+
+      box-shadow:
+        0 0 0 3px rgba(230,81,0,.10);
+    }
+
+
+    /* ========================================
+       CONTRASEÑA
+       ======================================== */
+
+    .password-toggle {
+      position: absolute;
+
+      right: 4px;
+      top: 4px;
+
+      min-width: 44px;
+      height: 44px;
+
+      border: 0;
+
+      background: transparent;
+      color: var(--gray);
+
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .password-toggle:hover {
+      color: var(--orange);
+    }
+
+
+    /* ========================================
+       OPCIONES
+       ======================================== */
+
+    .form-options {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      margin-top: -2px;
+    }
+
+    .remember {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      color: var(--gray);
+
+      font-size: 12px;
+    }
+
+    .remember input {
+      width: 16px;
+      height: 16px;
+
+      accent-color: var(--orange);
+    }
+
+    .forgot {
+      color: var(--orange);
+
+      font-size: 12px;
+      font-weight: 650;
+
+      text-decoration: none;
+    }
+
+
+    /* ========================================
+       BOTÓN PRINCIPAL
+       ======================================== */
+
+    .submit {
+      width: 100%;
+      min-height: 52px;
+
+      margin-top: 5px;
+
+      border: 0;
+      border-radius: 11px;
+
+      background: var(--orange);
+      color: #FFFFFF;
+
+      font-size: 15px;
+      font-weight: 700;
+
+      box-shadow:
+        0 3px 0 rgba(139, 45, 0, .18);
+
+      transition:
+        transform 120ms ease,
+        background-color 120ms ease;
+    }
+
+    .submit:hover {
+      background: #D84300;
+    }
+
+    .submit:active {
+      transform: translateY(2px);
+    }
+
+
+    /* ========================================
+       SEPARADOR
+       ======================================== */
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      margin: 25px 0;
+
+      color: #9CA3AF;
+
+      font-size: 11px;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+
+      flex: 1;
+
+      height: 1px;
+
+      background: var(--light-gray);
+    }
+
+
+    /* ========================================
+       REGISTRO
+       ======================================== */
+
+    .register {
+      text-align: center;
+
+      color: var(--gray);
+
+      font-size: 13px;
+    }
+
+    .register a {
+      color: var(--orange);
+
+      font-weight: 700;
+
+      text-decoration: none;
+    }
+
+
+    /* ========================================
+       COLORES SECUNDARIOS
+       ======================================== */
+
+    .accent-bar {
+      display: flex;
+      gap: 5px;
+
+      margin-top: 32px;
+    }
+
+    .accent-bar span {
+      height: 3px;
+
+      flex: 1;
+
+      border-radius: 3px;
+    }
+
+    .accent-bar span:nth-child(1) {
+      background: var(--orange);
+    }
+
+    .accent-bar span:nth-child(2) {
+      background: var(--yellow);
+    }
+
+    .accent-bar span:nth-child(3) {
+      background: var(--green);
+    }
+
+    .accent-bar span:nth-child(4) {
+      background: var(--blue);
+    }
+
+
+    /* ========================================
+       RESPONSIVE
+       ======================================== */
+
+    @media (max-width: 800px) {
+
+      .page {
+        display: block;
+      }
+
+      .visual {
+        min-height: 235px;
+
+        padding: 22px 24px;
+      }
+
+      .visual-content {
+        margin-top: 35px;
+      }
+
+      .visual-content h2 {
+        font-size: 32px;
+        letter-spacing: -1.5px;
+      }
+
+      .visual-content p {
+        display: none;
+      }
+
+      .route {
+        display: none;
+      }
+
+      .visual-footer {
+        display: none;
+      }
+
+      .shape-one {
+        width: 180px;
+        height: 180px;
+      }
+
+      .shape-two,
+      .shape-three {
+        display: none;
+      }
+
+      .login-area {
+        min-height: auto;
+
+        padding:
+          38px
+          24px
+          32px;
+      }
+
+      .login {
+        max-width: 480px;
+      }
+
+    }
+
+
+    @media (max-width: 420px) {
+
+      .visual {
+        min-height: 210px;
+      }
+
+      .visual-content h2 {
+        font-size: 29px;
+      }
+
+      .login-header h1 {
+        font-size: 29px;
+      }
+
+    }
+
+
+    /* ========================================
+       REDUCCIÓN DE MOVIMIENTO
+       ======================================== */
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        transition: none !important;
+        animation: none !important;
+      }
+
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <main class="page">
+
+    <!-- =====================================
+         PANEL VISUAL
+         ===================================== -->
+
+    <section class="visual">
+
+      <div class="shape shape-one"></div>
+      <div class="shape shape-two"></div>
+      <div class="shape shape-three"></div>
+
+      <div class="brand">
+
+        <div class="brand-mark">
+          TD
+        </div>
+
+        <span>TodoDelivery</span>
+
+      </div>
+
+
+      <div class="visual-content">
+
+        <div class="eyebrow">
+          Todo cerca. Todo fácil.
+        </div>
+
+        <h2>
+          Lo que buscás,
+          <span>en camino.</span>
+        </h2>
+
+        <p>
+          Pedí en comercios de tu zona y recibí
+          tus productos sin complicaciones.
+        </p>
+
+      </div>
+
+
+      <div class="route">
+
+        <div class="route-line"></div>
+
+        <div class="route-point start"></div>
+        <div class="route-point end"></div>
+
+      </div>
+
+
+      <div class="visual-footer">
+        © 2026 TodoDelivery
+      </div>
+
+    </section>
+
+
+    <!-- =====================================
+         LOGIN
+         ===================================== -->
+
+    <section class="login-area">
+
+      <div class="login">
+
+        <header class="login-header">
+
+          <div class="mini-mark">
+            TD
+          </div>
+
+          <h1>
+            Bienvenido de nuevo
+          </h1>
+
+          <p>
+            Ingresá a tu cuenta para continuar.
+          </p>
+
+        </header>
+
+
+        <form
+          class="form"
+          id="loginForm"
+        >
+
+          <div class="field">
+
+            <label for="phone">
+              Teléfono
+            </label>
+
+            <div class="input-wrapper">
+
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="Ej. 264 123 4567"
+                required
+              >
+
+            </div>
+
+          </div>
+
+
+          <div class="field">
+
+            <label for="password">
+              Contraseña
+            </label>
+
+            <div class="input-wrapper">
+
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Ingresá tu contraseña"
+                required
+              >
+
+              <button
+                type="button"
+                class="password-toggle"
+                id="togglePassword"
+                aria-label="Mostrar contraseña"
+              >
+                Mostrar
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <div class="form-options">
+
+            <label class="remember">
+
+              <input
+                type="checkbox"
+                name="remember"
+              >
+
+              Recordarme
+
+            </label>
+
+
+            <a
+              href="recuperar.html"
+              class="forgot"
+            >
+              ¿Olvidaste tu contraseña?
+            </a>
+
+          </div>
+
+
+          <button
+            type="submit"
+            class="submit"
+          >
+            Ingresar
+          </button>
+
+        </form>
+
+
+        <div class="divider">
+          o
+        </div>
+
+
+        <p class="register">
+          ¿Todavía no tenés una cuenta?
+          <a href="registro.html">
+            Crear cuenta
+          </a>
+        </p>
+
+
+        <div class="accent-bar">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <script>
+
+    /*
+     * ========================================
+     * MOSTRAR / OCULTAR CONTRASEÑA
+     * ========================================
+     */
+
+    const password =
+      document.getElementById("password");
+
+    const togglePassword =
+      document.getElementById("togglePassword");
+
+    togglePassword.addEventListener("click", () => {
+
+      const isPassword =
+        password.type === "password";
+
+      password.type =
+        isPassword ? "text" : "password";
+
+      togglePassword.textContent =
+        isPassword ? "Ocultar" : "Mostrar";
+
+      togglePassword.setAttribute(
+        "aria-label",
+        isPassword
+          ? "Ocultar contraseña"
+          : "Mostrar contraseña"
+      );
+
+    });
+
+
+    /*
+     * ========================================
+     * LOGIN
+     * ========================================
+     *
+     * Acá posteriormente conectaríamos
+     * la API/backend de TodoDelivery.
+     */
+
+    const loginForm =
+      document.getElementById("loginForm");
+
+    loginForm.addEventListener("submit", (event) => {
+
+      event.preventDefault();
+
+      const button =
+        loginForm.querySelector(".submit");
+
+      button.textContent = "Ingresando...";
+      button.disabled = true;
+
+      /*
+       * Simulación temporal.
+       *
+       * Posteriormente reemplazar por:
+       *
+       * fetch("/api/login", {...})
+       */
+
+      setTimeout(() => {
+
+        window.location.href =
+          "inicio.html";
+
+      }, 700);
+
+    });
+
+  </script>
+
+</body>
+</html>
+```

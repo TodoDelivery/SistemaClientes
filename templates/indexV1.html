@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TD Pedidos & Entregas</title>
+  <style>
+    :root {
+      --primary: #E65100;
+      --primary-gradient: linear-gradient(135deg, #FF6D00 0%, #E65100 100%);
+      --primary-pressed: #BF360C;
+      --accent-soft: #FFF3E0;
+      --bg: #FAFAFA;
+      --card-bg: #FFFFFF;
+      --border: #EAEAEA;
+      --border-focus: #FF6D00;
+      --text-main: #1A1A1A;
+      --text-muted: #757575;
+      --shadow-subtle: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      padding: 16px;
+    }
+
+    .mobile-frame {
+      width: 100%;
+      max-width: 380px;
+      min-height: 580px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Animación del Splash al Header */
+    .brand-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.65s cubic-bezier(0.25, 1, 0.5, 1);
+      will-change: transform;
+      z-index: 10;
+    }
+
+    .brand-section.splash-state {
+      transform: translateY(110px) scale(1.15);
+    }
+
+    .brand-section.form-state {
+      transform: translateY(0) scale(1);
+    }
+
+    /* Logo Insignia Sofisticada (Blanco + Cobre/Naranja) */
+    .logo-ring {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      border: 2px solid var(--accent-soft);
+      box-shadow: 0 8px 24px rgba(230, 81, 0, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .logo-inner-ring {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      border: 1.5px dashed #FFB74D;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle, #FFFFFF 60%, #FFF8E1 100%);
+    }
+
+    .logo-monogram {
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: -2px;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1;
+      padding-right: 2px;
+    }
+
+    /* Loader minimalista */
+    .loader-wrap {
+      margin-top: 24px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.35s ease;
+    }
+
+    .loader-ring {
+      width: 24px;
+      height: 24px;
+      border: 2.5px solid #F0F0F0;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    .loader-wrap.fade-out {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Formulario contenedor */
+    .form-card {
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-subtle);
+      padding: 26px 22px;
+      margin-top: 18px;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.5s ease 0.1s, transform 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.1s;
+    }
+
+    .form-card.hidden {
+      opacity: 0;
+      transform: translateY(24px);
+      pointer-events: none;
+      display: none;
+    }
+
+    .title-group {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    .form-title {
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #111;
+    }
+
+    .form-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Inputs */
+    .input-group {
+      margin-bottom: 14px;
+    }
+
+    .label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .field-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-clean {
+      width: 100%;
+      height: 46px;
+      padding: 0 14px;
+      font-size: 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #FAFAFA;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .input-clean:focus {
+      border-color: var(--border-focus);
+      background: #FFFFFF;
+    }
+
+    .btn-toggle-eye {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      cursor: pointer;
+      padding: 6px;
+    }
+
+    /* Botón Principal */
+    .btn-submit {
+      width: 100%;
+      height: 48px;
+      background: var(--primary-gradient);
+      color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+      box-shadow: 0 4px 14px rgba(230, 81, 0, 0.22);
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn-submit:active {
+      transform: scale(0.985);
+      opacity: 0.92;
+    }
+
+    /* Enlaces al pie */
+    .bottom-links {
+      text-align: center;
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .action-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .action-link.highlight {
+      color: var(--primary);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mobile-frame">
+    <!-- Logotipo animado con monograma TD -->
+    <div id="brand-section" class="brand-section splash-state">
+      <div class="logo-ring">
+        <div class="logo-inner-ring">
+          <span class="logo-monogram">TD</span>
+        </div>
+      </div>
+      
+      <!-- Indicador de carga dinámico -->
+      <div id="loader-wrap" class="loader-wrap">
+        <div class="loader-ring"></div>
+      </div>
+    </div>
+
+    <!-- Formulario de acceso -->
+    <div id="form-card" class="form-card hidden">
+      <div class="title-group">
+        <h2 class="form-title">Iniciar Sesión</h2>
+        <p class="form-sub">Acceso rápido a tu sistema de pedidos</p>
+      </div>
+
+      <form id="login-form" onsubmit="event.preventDefault(); alert('Iniciando sesión...');">
+        <div class="input-group">
+          <label class="label" for="user">Teléfono o usuario</label>
+          <input 
+            type="text" 
+            id="user" 
+            class="input-clean" 
+            placeholder="Ej: 3511234567" 
+            autocomplete="username" 
+            inputmode="numeric"
+            required
+          >
+        </div>
+
+        <div class="input-group">
+          <label class="label" for="password">Contraseña</label>
+          <div class="field-wrapper">
+            <input 
+              type="password" 
+              id="password" 
+              class="input-clean" 
+              placeholder="••••••••" 
+              autocomplete="current-password" 
+              required
+            >
+            <button type="button" id="toggle-pass" class="btn-toggle-eye">VER</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit">INGRESAR</button>
+      </form>
+
+      <div class="bottom-links">
+        <a href="#" class="action-link" onclick="alert('Función de recuperación'); return false;">¿Olvidaste tu contraseña?</a>
+        <span style="color: #888;">¿Primera vez? <a href="#" class="action-link highlight" onclick="alert('Pantalla de registro'); return false;">Crear cuenta</a></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const brand = document.getElementById("brand-section");
+      const loader = document.getElementById("loader-wrap");
+      const formCard = document.getElementById("form-card");
+      const togglePass = document.getElementById("toggle-pass");
+      const passInput = document.getElementById("password");
+
+      // Transición ultra fluida optimizada por GPU (transform y opacity)
+      setTimeout(() => {
+        loader.classList.add("fade-out");
+
+        setTimeout(() => {
+          loader.style.display = "none";
+          brand.classList.remove("splash-state");
+          brand.classList.add("form-state");
+
+          setTimeout(() => {
+            formCard.style.display = "block";
+            // Forzar reflow mínimo para disparo de transición limpia
+            formCard.offsetHeight;
+            formCard.classList.remove("hidden");
+          }, 200);
+        }, 300);
+      }, 1000);
+
+      // Alternar visualización de clave
+      togglePass.addEventListener("click", () => {
+        const isPass = passInput.type === "password";
+        passInput.type = isPass ? "text" : "password";
+        togglePass.textContent = isPass ? "OCULTAR" : "VER";
+      });
+    });
+  </script>
+
+</body>
+</html>
