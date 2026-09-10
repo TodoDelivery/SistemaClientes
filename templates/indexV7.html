@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0d12">
+  <meta name="description" content="Todo Delivery - Plataforma ultraligera y segura de gestión de pedidos y entregas.">
+  <title>Todo Delivery | Acceso Seguro</title>
+
+  <style>
+    /* ==========================================================================
+       1. VARIABLES DE DISEÑO & PERFORMANCE TOKENS
+       Paleta monocromática profunda con acento energético de alto contraste (WCAG AAA).
+       Zero webfonts, zero dependencias externas.
+       ========================================================================== */
+    :root {
+      --bg-base: #0a0d12;
+      --bg-surface: #12171f;
+      --bg-surface-elevated: #1a222e;
+      --bg-input: #0e131a;
+      
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: #ff6b00;
+      
+      --text-primary: #f3f5f8;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      
+      --accent: #ff6b00;
+      --accent-hover: #ff7d1a;
+      --accent-active: #e05e00;
+      --accent-text: #05070a;
+      
+      --safe-top: env(safe-area-inset-top, 24px);
+      --safe-bottom: env(safe-area-inset-bottom, 24px);
+      --safe-left: env(safe-area-inset-left, 24px);
+      --safe-right: env(safe-area-inset-right, 24px);
+
+      --font-system: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* ==========================================================================
+       2. RESET LÍQUIDO ULTRA EFICIENTE (Zero Layout Reflow)
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-system);
+      font-size: 16px;
+      line-height: 1.5;
+      text-rendering: optimizeSpeed;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ==========================================================================
+       3. CAPA SPLASH SCREEN ("Todo Delivery") - RENDIMIENTO EXTREMO
+       - steps() en CSS puro sin JS.
+       - Fondo dinámico por background-color (sin gradientes pesados).
+       - Transform translateY + Pseudo-elemento para efecto rastro.
+       - Desplazamiento final y eliminación del árbol de renderizado.
+       ========================================================================== */
+    #splash-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: max(24px, var(--safe-top)) max(24px, var(--safe-right)) max(24px, var(--safe-bottom)) max(24px, var(--safe-left));
+      background-color: #07090d;
+      will-change: transform;
+      contain: strict;
+      animation: 
+        bg-shift 2.4s ease-in-out forwards,
+        splash-exit 0.65s cubic-bezier(0.77, 0, 0.175, 1) 2.4s forwards;
+    }
+
+    /* Fondo dinámico ligero por color sólido (0% sobrecarga GPU) */
+    @keyframes bg-shift {
+      0% { background-color: #06080b; }
+      50% { background-color: #0d121a; }
+      100% { background-color: #0a0d12; }
+    }
+
+    /* Salida limpia con aceleración por hardware */
+    @keyframes splash-exit {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-100%);
+      }
+    }
+
+    .splash-brand-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      contain: layout paint;
+      animation: brand-float 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 1.6s forwards;
+    }
+
+    /* Desplazamiento hacia arriba con transform: translateY() */
+    @keyframes brand-float {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-20px);
+      }
+    }
+
+    /* Icono minimalista inline SVG de carga rápida */
+    .splash-logo-mark {
+      width: 44px;
+      height: 44px;
+      margin-bottom: 16px;
+      opacity: 0;
+      transform: scale(0.85);
+      animation: logo-reveal 0.5s ease-out 0.1s forwards;
+    }
+
+    @keyframes logo-reveal {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* Contenedor del texto mecanografiado */
+    .splash-typewriter-box {
+      position: relative;
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    /* Texto principal con efecto mecanografiado (13 caracteres: 'Todo Delivery') */
+    .splash-text {
+      position: relative;
+      display: block;
+      overflow: hidden;
+      white-space: nowrap;
+      border-right: 2px solid var(--accent);
+      width: 0ch;
+      font-size: clamp(1.75rem, 6vw, 2.25rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--text-primary);
+      animation: 
+        type-sequence 1.2s steps(13, end) 0.3s forwards,
+        cursor-pulse 0.6s step-end infinite;
+    }
+
+    /* Rastro cinético (Trace Effect) usando pseudo-elemento con opacidad retardada */
+    .splash-typewriter-box::after {
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      font-size: clamp(1.75rem, 6vw, 2.25rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--accent);
+      opacity: 0;
+      transform: translateY(0);
+      pointer-events: none;
+      transition: opacity 0.4s ease 0.15s, transform 0.4s ease 0.15s;
+    }
+
+    /* Activación del rastro coordinada */
+    .splash-brand-wrap.has-trace .splash-typewriter-box::after {
+      opacity: 0.28;
+      transform: translateY(6px) scale(0.99);
+    }
+
+    @keyframes type-sequence {
+      from { width: 0ch; }
+      to { width: 13ch; }
+    }
+
+    @keyframes cursor-pulse {
+      0%, 100% { border-color: transparent; }
+      50% { border-color: var(--accent); }
+    }
+
+    .splash-badge {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--text-muted);
+      opacity: 0;
+      animation: badge-fade 0.5s ease-out 1.2s forwards;
+    }
+
+    @keyframes badge-fade {
+      to { opacity: 1; }
+    }
+
+    /* ==========================================================================
+       4. ESTRUCTURA PRINCIPAL - LOGIN SCREEN (Neo-minimalismo de Rendimiento)
+       ========================================================================== */
+    .app-viewport {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: max(24px, var(--safe-top)) max(24px, var(--safe-right)) max(24px, var(--safe-bottom)) max(24px, var(--safe-left));
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    /* Encabezado de Identidad */
+    .auth-header {
+      padding-top: 12px;
+      text-align: left;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+    }
+
+    .auth-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .auth-subtitle {
+      font-size: 0.9375rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* Formulario y Grupos de Entrada */
+    .auth-form {
+      margin: 32px 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .field-group {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .field-label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      letter-spacing: 0.01em;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      transition: border-color 0.15s ease;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--accent);
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 16px;
+      width: 20px;
+      height: 20px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .form-input {
+      width: 100%;
+      height: 52px;
+      padding: 0 48px 0 46px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 1rem;
+    }
+
+    .form-input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    /* Botón Mostrar/Ocultar Contraseña (Fitts' Target >= 48x48px) */
+    .toggle-pwd-btn {
+      position: absolute;
+      right: 2px;
+      top: 2px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 8px;
+    }
+
+    .toggle-pwd-btn:focus-visible {
+      outline: 2px solid var(--accent);
+    }
+
+    .toggle-pwd-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Controles de Utilidad (Recordar / Olvido) */
+    .form-options {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: -4px;
+      font-size: 0.875rem;
+    }
+
+    .remember-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      min-height: 48px; /* Safe thumb target */
+      user-select: none;
+    }
+
+    /* Checkbox de Alta Velocidad sin JS */
+    .native-checkbox {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 5px;
+      display: grid;
+      place-content: center;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .native-checkbox:checked {
+      background-color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .native-checkbox::before {
+      content: "";
+      width: 10px;
+      height: 6px;
+      border-left: 2px solid var(--accent-text);
+      border-bottom: 2px solid var(--accent-text);
+      transform: rotate(-45deg) translate(1px, -1px) scale(0);
+      transition: transform 0.15s ease;
+    }
+
+    .native-checkbox:checked::before {
+      transform: rotate(-45deg) translate(1px, -1px) scale(1);
+    }
+
+    .native-checkbox:focus-visible {
+      outline: 2px solid var(--accent);
+    }
+
+    .text-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 12px 0; /* Expanded touch zone */
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .text-link:active {
+      opacity: 0.75;
+    }
+
+    /* Botón de Acción Principal (Thumb Zone) */
+    .submit-btn {
+      width: 100%;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background-color: var(--accent);
+      color: var(--accent-text);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 8px;
+      will-change: transform;
+      transition: background-color 0.15s ease, transform 0.08s ease;
+    }
+
+    .submit-btn:active {
+      transform: scale(0.98);
+      background-color: var(--accent-active);
+    }
+
+    .submit-btn:focus-visible {
+      outline: 2px solid #ffffff;
+      outline-offset: 2px;
+    }
+
+    /* Pie de Página / Registro */
+    .auth-footer {
+      text-align: center;
+      padding-top: 16px;
+    }
+
+    .footer-prompt {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .register-link {
+      color: var(--text-primary);
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+      padding: 10px 4px;
+      display: inline-block;
+    }
+
+    .register-link:active {
+      color: var(--accent);
+    }
+
+    /* Estado de Skeleton de Carga Rápida (Zero CPU) */
+    .skeleton-box {
+      background-color: var(--bg-surface-elevated);
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       SPLASH SCREEN DE RENDIMIENTO EXTREMO ("Todo Delivery")
+       ======================================================================== -->
+  <aside id="splash-layer" aria-label="Cargando Todo Delivery" role="status">
+    <div class="splash-brand-wrap" id="splash-brand">
+      
+      <!-- Isotipo SVG Vectorial Inline (0 peticiones de red) -->
+      <svg class="splash-logo-mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="48" height="48" rx="12" fill="#FF6B00"/>
+        <path d="M14 25.5L20.5 32L34 16.5" stroke="#07090D" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12 15H20" stroke="#07090D" stroke-width="3" stroke-linecap="round"/>
+        <path d="M10 20H16" stroke="#07090D" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+
+      <!-- Efecto Mecanografiado Nativo con CSS steps(13) -->
+      <div class="splash-typewriter-box" data-text="Todo Delivery">
+        <h1 class="splash-text">Todo Delivery</h1>
+      </div>
+
+      <span class="splash-badge">Logística Instantánea</span>
+    </div>
+  </aside>
+
+  <!-- ========================================================================
+       PANTALLA DE ACCESO (LOGIN) - ALTO RENDIMIENTO MOBILE-FIRST
+       ======================================================================== -->
+  <main class="app-viewport">
+    
+    <!-- Encabezado / Identidad de Marca -->
+    <header class="auth-header">
+      <div class="brand-row">
+        <svg class="brand-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="#FF6B00"/>
+          <path d="M9 17L13.5 21.5L23 11" stroke="#07090D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="brand-name">Todo Delivery</span>
+      </div>
+
+      <h2 class="auth-title">Bienvenido</h2>
+      <p class="auth-subtitle">Ingresa tus credenciales para administrar tus órdenes y entregas.</p>
+    </header>
+
+    <!-- Formulario Optimizado -->
+    <form class="auth-form" id="login-form" action="/login" method="POST" novalidate>
+      
+      <!-- Campo Usuario / Email -->
+      <div class="field-group">
+        <label for="user-credential" class="field-label">Usuario o Correo</label>
+        <div class="input-wrapper">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <input 
+            type="text" 
+            id="user-credential" 
+            name="username" 
+            class="form-input" 
+            placeholder="ej. repartidor@tododelivery.com" 
+            autocomplete="username" 
+            inputmode="email"
+            autocapitalize="none"
+            spellcheck="false"
+            required
+          >
+        </div>
+      </div>
+
+      <!-- Campo Contraseña con Revelado Seguro -->
+      <div class="field-group">
+        <label for="user-password" class="field-label">Contraseña</label>
+        <div class="input-wrapper">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <input 
+            type="password" 
+            id="user-password" 
+            name="password" 
+            class="form-input" 
+            placeholder="••••••••••••" 
+            autocomplete="current-password"
+            required
+          >
+          <button 
+            type="button" 
+            id="toggle-password" 
+            class="toggle-pwd-btn" 
+            aria-label="Mostrar contraseña"
+          >
+            <!-- Icono Ojo (Inline SVG) -->
+            <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Opciones Rápidas: Recordar y Recuperación -->
+      <div class="form-options">
+        <label class="remember-label">
+          <input type="checkbox" name="remember" class="native-checkbox">
+          <span>Recordar sesión</span>
+        </label>
+        <a href="#recuperar" class="text-link">¿Olvidaste tu clave?</a>
+      </div>
+
+      <!-- Botón Primario de Alto Impacto -->
+      <button type="submit" class="submit-btn" id="btn-submit">
+        <span>Ingresar al Sistema</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+
+    </form>
+
+    <!-- Pie / Registro -->
+    <footer class="auth-footer">
+      <p class="footer-prompt">
+        ¿Aún no tienes cuenta comercial? 
+        <a href="#registro" class="register-link">Regístrate</a>
+      </p>
+    </footer>
+
+  </main>
+
+  <!-- ========================================================================
+       MICRO-SCRIPT DE LIBERACIÓN DE RECURSOS (Zero CPU Overhead)
+       1. Activa rastro sutil coordinado con la animación.
+       2. Destruye la capa splash del DOM tras completar para liberar VRAM.
+       3. Toggle nativo y liviano de contraseña.
+       ======================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      const splashLayer = document.getElementById('splash-layer');
+      const splashBrand = document.getElementById('splash-brand');
+      const toggleBtn = document.getElementById('toggle-password');
+      const pwdInput = document.getElementById('user-password');
+
+      // 1. Activar rastro cinético retardado durante el desplazamiento
+      setTimeout(function () {
+        if (splashBrand) {
+          splashBrand.classList.add('has-trace');
+        }
+      }, 1600);
+
+      // 2. Liberación de memoria gráfica (VRAM): remover splash del DOM
+      function purgeSplash() {
+        if (splashLayer && splashLayer.parentNode) {
+          splashLayer.style.display = 'none';
+          splashLayer.remove(); // Limpieza absoluta de nodos para 1GB RAM
+        }
+      }
+
+      if (splashLayer) {
+        splashLayer.addEventListener('animationend', function (e) {
+          if (e.animationName === 'splash-exit') {
+            purgeSplash();
+          }
+        });
+        // Respaldo de seguridad por si el dispositivo suspende eventos de animación
+        setTimeout(purgeSplash, 3200);
+      }
+
+      // 3. Toggle de contraseña de alto rendimiento (zero allocations)
+      if (toggleBtn && pwdInput) {
+        toggleBtn.addEventListener('click', function () {
+          const isPassword = pwdInput.type === 'password';
+          pwdInput.type = isPassword ? 'text' : 'password';
+          toggleBtn.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+          toggleBtn.style.color = isPassword ? 'var(--accent)' : 'var(--text-muted)';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#FF5500">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="TodoDelivery Express — Plataforma ultraligera de logística y seguimiento de paquetes en tiempo real.">
+
+  <title>TD Express — Envíos y Logística</title>
+
+  <style>
+    /* ==========================================================================
+       TD EXPRESS — DESIGN SYSTEM (Performance-Driven / Ultra-Legacy Ready)
+       - 0% Blur (Backdrop-filter prohibido)
+       - 0% Sombras difusas gaussianas
+       - 100% Animaciones sobre transform y opacity (GPU Composite Layer)
+       - Tipografía nativa del sistema (0 bytes de descarga webfonts)
+       ========================================================================== */
+
+    :root {
+      /* Colores base: Naranja y Blanco con alto contraste */
+      --td-orange: #FF5500;
+      --td-orange-deep: #D94400;
+      --td-orange-light: #FFF2EB;
+      --td-orange-tint: #FFE5D6;
+      
+      --td-white: #FFFFFF;
+      --td-surface: #F9FAFB;
+      --td-border: #E5E7EB;
+      --td-border-focus: #FF5500;
+
+      --td-text-primary: #111827;
+      --td-text-secondary: #4B5563;
+      --td-text-tertiary: #9CA3AF;
+      --td-text-inverse: #FFFFFF;
+
+      /* Tokens estructurales */
+      --touch-target: 48px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-full: 9999px;
+      
+      /* Easing acelerado por hardware */
+      --ease-snappy: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-exit: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Reset ultraligero */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--td-white);
+      color: var(--td-text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      text-rendering: optimizeSpeed;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    /* Contenedor viewport universal */
+    .app-viewport {
+      position: relative;
+      width: 100%;
+      height: 100dvh;
+      min-height: 100vh;
+      max-width: 440px;
+      margin: 0 auto;
+      background: var(--td-white);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ==========================================================================
+       FASE 1: SPLASH SCREEN (CAPA ACTIVA DE ARRANQUE)
+       ========================================================================== */
+    .splash-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      background-color: var(--td-white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      will-change: transform, opacity;
+      transform: translate3d(0, 0, 0);
+      transition: transform 520ms var(--ease-exit), opacity 420ms var(--ease-exit);
+    }
+
+    /* Contenedor central de marca con desplazamiento cinético */
+    .splash-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      will-change: transform, opacity;
+      transform: translate3d(0, 0, 0);
+      transition: transform 480ms var(--ease-exit), opacity 380ms var(--ease-exit);
+    }
+
+    /* Icono Vectorial de Logística: Caja / Paquete en movimiento */
+    .brand-icon-wrapper {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Animación de entrada con desplazamiento desde la izquierda */
+      animation: packageArrival 600ms var(--ease-snappy) forwards;
+    }
+
+    .brand-svg {
+      width: 80px;
+      height: 80px;
+      display: block;
+    }
+
+    /* Líneas de velocidad cinéticas del paquete */
+    .transit-line {
+      position: absolute;
+      bottom: -6px;
+      height: 3px;
+      background-color: var(--td-orange);
+      border-radius: 2px;
+      will-change: transform;
+      animation: speedLine 800ms var(--ease-snappy) infinite alternate;
+    }
+    .line-1 { width: 36px; left: 10px; }
+    .line-2 { width: 20px; left: 52px; animation-delay: 150ms; }
+
+    /* Tipografía de Marca */
+    .brand-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      line-height: 1.1;
+      color: var(--td-text-primary);
+      opacity: 0;
+      transform: translate3d(0, 10px, 0);
+      animation: elementFadeIn 450ms var(--ease-snappy) 200ms forwards;
+    }
+
+    .brand-title .accent {
+      color: var(--td-orange);
+      font-weight: 900;
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      padding: 4px 10px;
+      background-color: var(--td-orange-light);
+      color: var(--td-orange-deep);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-radius: var(--radius-full);
+      opacity: 0;
+      transform: translate3d(0, 8px, 0);
+      animation: elementFadeIn 400ms var(--ease-snappy) 320ms forwards;
+    }
+
+    .brand-tagline {
+      margin-top: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--td-text-secondary);
+      opacity: 0;
+      transform: translate3d(0, 8px, 0);
+      animation: elementFadeIn 400ms var(--ease-snappy) 420ms forwards;
+    }
+
+    /* Indicador de Despacho / Ruta inferior */
+    .splash-route-status {
+      position: absolute;
+      bottom: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 0 40px;
+      opacity: 0;
+      animation: elementFadeIn 400ms var(--ease-snappy) 500ms forwards;
+    }
+
+    .route-track {
+      width: 100%;
+      max-width: 180px;
+      height: 4px;
+      background-color: var(--td-border);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .route-courier-runner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 35%;
+      background-color: var(--td-orange);
+      border-radius: var(--radius-full);
+      animation: courierGlide 1100ms ease-in-out infinite;
+    }
+
+    .route-caption {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--td-text-tertiary);
+      letter-spacing: 0.2px;
+    }
+
+    /* ==========================================================================
+       EFECTO DE SALIDA (DESVELADO DEL LOGIN)
+       Coordinación en 2 fases mediante transform y opacity
+       ========================================================================== */
+    .splash-layer.is-exiting {
+      opacity: 0;
+      pointer-events: none;
+      transform: translate3d(0, -28px, 0);
+    }
+
+    .splash-layer.is-exiting .splash-hero {
+      transform: translate3d(0, -40px, 0) scale(0.96);
+      opacity: 0;
+    }
+
+    .splash-layer.is-exiting .splash-route-status {
+      transform: translate3d(0, 16px, 0);
+      opacity: 0;
+      transition: transform 300ms var(--ease-exit), opacity 240ms var(--ease-exit);
+    }
+
+    /* ==========================================================================
+       FASE 2: PANTALLA DE LOGIN (DESVELADA)
+       ========================================================================== */
+    .login-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 32px 24px 24px 24px;
+      background-color: var(--td-white);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      
+      /* Estado inicial oculto preparado para ser revelado */
+      opacity: 0;
+      transform: translate3d(0, 24px, 0);
+      will-change: transform, opacity;
+      transition: transform 480ms var(--ease-snappy), opacity 420ms ease;
+    }
+
+    /* Estado revelado */
+    .login-container.is-revealed {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+
+    /* Encabezado del Login */
+    .login-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .mini-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mini-logo-box {
+      width: 36px;
+      height: 36px;
+      background: var(--td-orange);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mini-logo-box svg {
+      width: 22px;
+      height: 22px;
+      fill: var(--td-white);
+    }
+
+    .mini-brand-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--td-text-primary);
+      letter-spacing: -0.4px;
+    }
+    .mini-brand-name span {
+      color: var(--td-orange);
+    }
+
+    .btn-replay {
+      border: 1px solid var(--td-border);
+      background: transparent;
+      color: var(--td-text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .btn-replay:active {
+      background-color: var(--td-surface);
+    }
+
+    /* Mensaje de bienvenida */
+    .login-welcome {
+      margin-bottom: 24px;
+    }
+
+    .login-welcome h2 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--td-text-primary);
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+
+    .login-welcome p {
+      font-size: 14px;
+      color: var(--td-text-secondary);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* Formulario optimizado */
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--td-text-primary);
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      width: 20px;
+      height: 20px;
+      color: var(--td-text-tertiary);
+      pointer-events: none;
+    }
+
+    .input-control {
+      width: 100%;
+      height: var(--touch-target);
+      padding: 0 14px 0 44px;
+      font-size: 15px;
+      color: var(--td-text-primary);
+      background-color: var(--td-white);
+      border: 1.5px solid var(--td-border);
+      border-radius: var(--radius-md);
+      outline: none;
+      transition: border-color 150ms ease;
+    }
+
+    .input-control:focus {
+      border-color: var(--td-border-focus);
+    }
+
+    .input-control::placeholder {
+      color: var(--td-text-tertiary);
+    }
+
+    .form-extras {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .forgot-link {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--td-orange);
+      text-decoration: none;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    /* Botón Primario: Alto contraste sólido */
+    .btn-primary {
+      width: 100%;
+      min-height: var(--touch-target);
+      height: 50px;
+      background-color: var(--td-orange);
+      color: var(--td-white);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      will-change: transform;
+      transition: background-color 150ms ease, transform 100ms ease;
+    }
+
+    .btn-primary:active {
+      background-color: var(--td-orange-deep);
+      transform: scale(0.985);
+    }
+
+    /* Acceso rápido de Tracking sin autenticación */
+    .guest-tracking-card {
+      margin-top: 10px;
+      padding: 14px;
+      background-color: var(--td-surface);
+      border: 1px solid var(--td-border);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      min-height: 52px;
+      text-decoration: none;
+    }
+
+    .guest-tracking-card:active {
+      background-color: var(--td-orange-light);
+      border-color: var(--td-orange-tint);
+    }
+
+    .guest-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .guest-info-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--td-text-primary);
+    }
+
+    .guest-info-desc {
+      font-size: 11px;
+      color: var(--td-text-secondary);
+    }
+
+    .guest-icon-badge {
+      width: 32px;
+      height: 32px;
+      background: var(--td-white);
+      border: 1px solid var(--td-border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--td-orange);
+      flex-shrink: 0;
+    }
+
+    /* Footer / Registro */
+    .login-footer {
+      text-align: center;
+      padding-top: 16px;
+      font-size: 13px;
+      color: var(--td-text-secondary);
+    }
+
+    .login-footer a {
+      color: var(--td-orange);
+      font-weight: 700;
+      text-decoration: none;
+      padding: 4px;
+    }
+
+    /* ==========================================================================
+       KEYFRAMES PURAS — SOLO TRANSFORM & OPACITY (Hardware Accelerated)
+       ========================================================================== */
+    @keyframes packageArrival {
+      0% {
+        opacity: 0;
+        transform: translate3d(-32px, 0, 0);
+      }
+      70% {
+        transform: translate3d(4px, 0, 0);
+      }
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes speedLine {
+      0% {
+        transform: scaleX(0.4) translate3d(-10px, 0, 0);
+        opacity: 0.4;
+      }
+      100% {
+        transform: scaleX(1) translate3d(12px, 0, 0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes elementFadeIn {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 10px, 0);
+      }
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    @keyframes courierGlide {
+      0% {
+        transform: translate3d(-100%, 0, 0);
+      }
+      50% {
+        transform: translate3d(120%, 0, 0);
+      }
+      100% {
+        transform: translate3d(320%, 0, 0);
+      }
+    }
+
+    /* Modo Accesibilidad: Reducción estricta de movimiento */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .brand-icon-wrapper,
+      .brand-title,
+      .brand-badge,
+      .brand-tagline,
+      .splash-route-status {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app-viewport">
+
+    <!-- ========================================================================
+         SPLASH SCREEN DINÁMICA (CON DESPLAZAMIENTO Y SALIDA SINCRONIZADA)
+         ======================================================================== -->
+    <section class="splash-layer" id="splashLayer" aria-label="Pantalla de inicio de TD Express">
+      
+      <div class="splash-hero" id="splashHero">
+        
+        <!-- Emblema Vectorial: Caja Paquetería Isométrica con Impulso Cinético -->
+        <div class="brand-icon-wrapper" aria-hidden="true">
+          <svg class="brand-svg" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Sombra de contacto sólida/nítida (sin blur para evitar saturar GPU) -->
+            <ellipse cx="40" cy="71" rx="24" ry="4" fill="#F3F4F6"/>
+            
+            <!-- Cara Superior de la Caja (Naranja vivo) -->
+            <path d="M40 12L68 26L40 40L12 26L40 12Z" fill="#FF5500"/>
+            
+            <!-- Cara Izquierda de la Caja (Naranja sombra) -->
+            <path d="M12 26L40 40V68L12 54V26Z" fill="#D94400"/>
+            
+            <!-- Cara Derecha de la Caja (Naranja medio) -->
+            <path d="M40 40L68 26V54L40 68V40Z" fill="#E84D00"/>
+            
+            <!-- Cinta de seguridad / Sello Express en Blanco Puro -->
+            <path d="M40 12L54 19L40 26L26 19L40 12Z" fill="#FFFFFF" fill-opacity="0.95"/>
+            <path d="M34 23L46 29V57L34 51V23Z" fill="#FFFFFF" fill-opacity="0.95"/>
+            
+            <!-- Flecha de velocidad cinética grabada en el paquete -->
+            <path d="M37 38L43 43L37 48" stroke="#FF5500" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+
+          <!-- Estelas de velocidad lineal pura (vectoriales) -->
+          <div class="transit-line line-1"></div>
+          <div class="transit-line line-2"></div>
+        </div>
+
+        <!-- Títulos de Marca con Jerarquía Pura -->
+        <h1 class="brand-title">
+          TD <span class="accent">Express</span>
+        </h1>
+
+        <div class="brand-badge">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+          Logística Global
+        </div>
+
+        <p class="brand-tagline">
+          Envíos ágiles, entrega garantizada
+        </p>
+
+      </div>
+
+      <!-- Barra de Progreso de Ruta y Despacho -->
+      <div class="splash-route-status" id="splashRoute">
+        <div class="route-track" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
+          <div class="route-courier-runner"></div>
+        </div>
+        <span class="route-caption">Preparando tu flota...</span>
+      </div>
+
+    </section>
+
+
+    <!-- ========================================================================
+         LOGIN CONTAINER (DESVELADO MEDIANTE TRANSICIÓN FLUIDA)
+         ======================================================================== -->
+    <main class="login-container" id="loginContainer" aria-label="Formulario de inicio de sesión" aria-hidden="true">
+      
+      <!-- Top Bar / Cabecera compacta -->
+      <header class="login-header">
+        <div class="mini-brand">
+          <div class="mini-logo-box" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M21 16.5l-9 5.25-9-5.25v-9l9-5.25 9 5.25v9zM12 3.8L4.5 8.15 12 12.5l7.5-4.35L12 3.8zM4.5 9.9v6.7l6.75 3.93v-6.7L4.5 9.9zm8.25 10.63l6.75-3.93v-6.7l-6.75 3.93v6.7z"/>
+            </svg>
+          </div>
+          <span class="mini-brand-name">TD <span>Express</span></span>
+        </div>
+
+        <!-- Botón para reiniciar y probar la animación de Splash -->
+        <button type="button" class="btn-replay" id="btnReplaySplash" title="Volver a ver la animación de carga">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6"></path>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Splash
+        </button>
+      </header>
+
+      <!-- Saludo y Propuesta de Valor -->
+      <div class="login-body">
+        <section class="login-welcome">
+          <h2>Gestiona tus envíos</h2>
+          <p>Ingresa para monitorear paquetes en ruta, coordinar retiros o despachar encomiendas.</p>
+        </section>
+
+        <!-- Formulario de Acceso de Alto Rendimiento -->
+        <form class="login-form" id="loginForm" action="#" method="POST" onsubmit="event.preventDefault();">
+          
+          <!-- Campo 1: Identificador / Teléfono o Correo -->
+          <div class="field-group">
+            <label for="userIdentifier" class="field-label">Correo o Teléfono registrado</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <input 
+                type="text" 
+                id="userIdentifier" 
+                name="identifier" 
+                class="input-control" 
+                placeholder="ej. cliente@tododelivery.com" 
+                required 
+                autocomplete="username"
+                inputmode="email"
+              >
+            </div>
+          </div>
+
+          <!-- Campo 2: Clave / Código PIN -->
+          <div class="field-group">
+            <label for="userPassword" class="field-label">Contraseña o Clave TD</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <input 
+                type="password" 
+                id="userPassword" 
+                name="password" 
+                class="input-control" 
+                placeholder="Ingresa tu clave de acceso" 
+                required 
+                autocomplete="current-password"
+              >
+            </div>
+          </div>
+
+          <!-- Olvido de contraseña -->
+          <div class="form-extras">
+            <a href="#" class="forgot-link">¿Olvidaste tu clave?</a>
+          </div>
+
+          <!-- Botón de Envío Principal -->
+          <button type="submit" class="btn-primary" id="btnSubmit">
+            <span>Iniciar Sesión</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </form>
+
+        <!-- Acceso Rápido: Rastreo Express sin Login (Patrón clave en líderes de logística) -->
+        <a href="#" class="guest-tracking-card" role="button" aria-label="Rastrear paquete sin iniciar sesión">
+          <div class="guest-icon-badge" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <div class="guest-info">
+            <span class="guest-info-title">¿Solo quieres rastrear un envío?</span>
+            <span class="guest-info-desc">Ingresa tu número de guía sin iniciar sesión</span>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </a>
+
+      </div>
+
+      <!-- Pie de Pantalla / Registro -->
+      <footer class="login-footer">
+        <p>¿Aún no tienes cuenta? <a href="Registro.html">Regístrate gratis</a></p>
+      </footer>
+
+    </main>
+
+  </div>
+
+  <!-- ========================================================================
+       ORQUESTACIÓN DE ALTO RENDIMIENTO (Solo 1 setTimeout + 0 Jank)
+       ======================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      const SPLASH_DURATION_MS = 2000;
+      const EXIT_ANIMATION_MS = 420;
+
+      const splashLayer = document.getElementById('splashLayer');
+      const loginContainer = document.getElementById('loginContainer');
+      const btnReplaySplash = document.getElementById('btnReplaySplash');
+
+      let transitionTimer = null;
+
+      function triggerSplashExit() {
+        /* Paso 1: Activar desplazamiento de salida en la Splash */
+        splashLayer.classList.add('is-exiting');
+
+        /* Paso 2: Revelar el contenedor de login de manera sincronizada */
+        window.setTimeout(function () {
+          loginContainer.classList.add('is-revealed');
+          loginContainer.setAttribute('aria-hidden', 'false');
+          splashLayer.style.display = 'none';
+        }, EXIT_ANIMATION_MS);
+      }
+
+      function initSplashSequence() {
+        // Asegurar visibilidad inicial limpia
+        splashLayer.style.display = 'flex';
+        splashLayer.classList.remove('is-exiting');
+        loginContainer.classList.remove('is-revealed');
+        loginContainer.setAttribute('aria-hidden', 'true');
+
+        // Disparar la transición después de la ventana de reconocimiento de marca
+        clearTimeout(transitionTimer);
+        transitionTimer = window.setTimeout(triggerSplashExit, SPLASH_DURATION_MS);
+      }
+
+      // Botón de reintento/vista previa en desarrollo
+      if (btnReplaySplash) {
+        btnReplaySplash.addEventListener('click', function () {
+          initSplashSequence();
+        });
+      }
+
+      // Iniciar al cargar el DOM
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSplashSequence);
+      } else {
+        initSplashSequence();
+      }
+    })();
+  </script>
+
+</body>
+</html>

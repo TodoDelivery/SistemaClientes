@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="theme-color" content="#08090C">
+  <meta name="description" content="Todo Delivery - Plataforma Gastronómica de Vanguardia">
+  <title>Todo Delivery | Acceso de Autor</title>
+
+  <style>
+    /* ==========================================================================
+       1. VARIABLES DE DISEÑO (DESIGN TOKENS) - ZERO HTTP CALLS
+       ========================================================================== */
+    :root {
+      /* Paleta Obsidian & Amber */
+      --color-bg-base: #08090C;
+      --color-surface: #111319;
+      --color-surface-elevated: #181B24;
+      --color-surface-hover: #222633;
+      
+      --color-border-subtle: rgba(255, 255, 255, 0.07);
+      --color-border-focus: rgba(255, 138, 36, 0.7);
+      
+      --color-amber-primary: #FF7A1A;
+      --color-amber-vibrant: #FF9436;
+      --color-amber-deep: #D95400;
+      --color-gold-accent: #F59E0B;
+      
+      --color-text-title: #FFFFFF;
+      --color-text-body: #E2E4EB;
+      --color-text-muted: #8E95A5;
+      --color-text-dim: #5C6272;
+      
+      /* Tipografía Nativa de Sistema (0ms FOUT, 0kb de carga) */
+      --font-system: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+      
+      /* Timing Curves Cinemáticas */
+      --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-bounce-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* ==========================================================================
+       2. RESET & BASE ULTRA-OPTIMIZADOS (GPU FRIENDLY)
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      background-color: var(--color-bg-base);
+      color: var(--color-text-body);
+      font-family: var(--font-system);
+      font-size: 16px;
+      line-height: 1.5;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      touch-action: manipulation;
+    }
+
+    /* ==========================================================================
+       3. AMBIENTE CROMÁTICO DINÁMICO (60 FPS - SOLO OPACITY & TRANSFORM)
+       ========================================================================== */
+    .ambient-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+      contain: strict;
+    }
+
+    .ambient-glow-1 {
+      position: absolute;
+      top: -20%;
+      left: 50%;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 122, 26, 0.22) 0%, rgba(217, 84, 0, 0.08) 50%, transparent 75%);
+      transform: translate3d(-50%, 0, 0);
+      will-change: transform, opacity;
+      animation: ambientPulse1 7s var(--ease-cinematic) infinite alternate;
+    }
+
+    .ambient-glow-2 {
+      position: absolute;
+      bottom: -15%;
+      right: -10%;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(245, 158, 11, 0.16) 0%, rgba(255, 122, 26, 0.04) 55%, transparent 70%);
+      will-change: transform, opacity;
+      animation: ambientPulse2 9s ease-in-out infinite alternate;
+    }
+
+    @keyframes ambientPulse1 {
+      0% {
+        transform: translate3d(-50%, 0, 0) scale(1);
+        opacity: 0.7;
+      }
+      50% {
+        transform: translate3d(-45%, 40px, 0) scale(1.15);
+        opacity: 1;
+      }
+      100% {
+        transform: translate3d(-55%, 20px, 0) scale(0.95);
+        opacity: 0.75;
+      }
+    }
+
+    @keyframes ambientPulse2 {
+      0% {
+        transform: translate3d(0, 0, 0) scale(0.9);
+        opacity: 0.5;
+      }
+      100% {
+        transform: translate3d(-30px, -40px, 0) scale(1.18);
+        opacity: 0.85;
+      }
+    }
+
+    /* ==========================================================================
+       4. SPLASH SCREEN CINEMÁTICA CON EFECTO RASTRO (PURE CSS3)
+       ========================================================================== */
+    .splash-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--color-bg-base);
+      contain: strict;
+      will-change: transform, opacity;
+      /* Secuencia Splash Completa: 3.4s */
+      animation: splashFadeOut 0.6s var(--ease-cinematic) 2.9s forwards;
+    }
+
+    @keyframes splashFadeOut {
+      0% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+        pointer-events: auto;
+      }
+      99% {
+        opacity: 0;
+        transform: translate3d(0, -35px, 0) scale(1.02);
+        pointer-events: none;
+      }
+      100% {
+        opacity: 0;
+        transform: translate3d(0, -35px, 0) scale(1.02);
+        pointer-events: none;
+        visibility: hidden;
+      }
+    }
+
+    .splash-brand-cluster {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      will-change: transform;
+    }
+
+    /* Rastro / Trail Ghosting Layers */
+    .trail-layer {
+      position: absolute;
+      white-space: nowrap;
+      pointer-events: none;
+      user-select: none;
+      font-size: clamp(2.2rem, 7vw, 3.4rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      will-change: transform, opacity;
+    }
+
+    /* Trail 3 (El más lejano) */
+    .trail-3 {
+      color: rgba(255, 122, 26, 0.2);
+      animation: trailMove3 0.9s var(--ease-cinematic) 1.85s forwards;
+      opacity: 0;
+    }
+
+    /* Trail 2 (Intermedio) */
+    .trail-2 {
+      color: rgba(245, 158, 11, 0.45);
+      animation: trailMove2 0.85s var(--ease-cinematic) 1.8s forwards;
+      opacity: 0;
+    }
+
+    /* Trail 1 (Cercano al texto principal) */
+    .trail-1 {
+      color: rgba(255, 154, 54, 0.7);
+      animation: trailMove1 0.8s var(--ease-cinematic) 1.75s forwards;
+      opacity: 0;
+    }
+
+    @keyframes trailMove3 {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      35% {
+        opacity: 0.35;
+        transform: translate3d(0, -28px, 0) scale(0.97);
+      }
+      70% {
+        opacity: 0.2;
+        transform: translate3d(0, -56px, 0) scale(0.94);
+      }
+      100% {
+        opacity: 0;
+        transform: translate3d(0, -85px, 0) scale(0.91);
+      }
+    }
+
+    @keyframes trailMove2 {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      40% {
+        opacity: 0.55;
+        transform: translate3d(0, -22px, 0) scale(0.98);
+      }
+      80% {
+        opacity: 0.3;
+        transform: translate3d(0, -50px, 0) scale(0.96);
+      }
+      100% {
+        opacity: 0;
+        transform: translate3d(0, -78px, 0) scale(0.93);
+      }
+    }
+
+    @keyframes trailMove1 {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      45% {
+        opacity: 0.8;
+        transform: translate3d(0, -16px, 0) scale(0.99);
+      }
+      85% {
+        opacity: 0.4;
+        transform: translate3d(0, -42px, 0) scale(0.97);
+      }
+      100% {
+        opacity: 0;
+        transform: translate3d(0, -70px, 0) scale(0.95);
+      }
+    }
+
+    /* Capa Principal: Animación Letra por Letra */
+    .brand-hero-text {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(2.2rem, 7vw, 3.4rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      color: var(--color-text-title);
+      white-space: nowrap;
+      position: relative;
+      z-index: 4;
+      will-change: transform, opacity;
+      animation: brandHeroAscent 0.9s var(--ease-cinematic) 1.7s forwards;
+    }
+
+    @keyframes brandHeroAscent {
+      0% {
+        transform: translate3d(0, 0, 0);
+      }
+      100% {
+        transform: translate3d(0, -65px, 0);
+      }
+    }
+
+    /* Cada letra individual con Stagger Delay */
+    .char {
+      display: inline-block;
+      opacity: 0;
+      transform: translate3d(0, 16px, 0) scale(0.85);
+      will-change: transform, opacity;
+      animation: charEntrance 0.45s var(--ease-bounce-soft) forwards;
+      animation-delay: calc(var(--c) * 0.075s);
+    }
+
+    @keyframes charEntrance {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 16px, 0) scale(0.85);
+      }
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+    }
+
+    .char-accent {
+      color: var(--color-amber-primary);
+    }
+
+    .char-space {
+      width: 0.35em;
+    }
+
+    /* Subtítulo Splash Cinemático */
+    .splash-kicker {
+      margin-top: 14px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.28em;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      opacity: 0;
+      transform: translate3d(0, 12px, 0);
+      will-change: transform, opacity;
+      animation: kickerReveal 0.6s var(--ease-cinematic) 1.1s forwards;
+    }
+
+    @keyframes kickerReveal {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 12px, 0);
+      }
+      100% {
+        opacity: 0.85;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    /* ==========================================================================
+       5. INTERFAZ DE LOGIN (REVELADO SINCRONIZADO PURE CSS)
+       ========================================================================== */
+    .app-viewport {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(16px, 4vw, 36px) 16px;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      opacity: 0;
+      transform: translate3d(0, 32px, 0) scale(0.98);
+      will-change: transform, opacity;
+      /* Entrada cinematográfica que engancha con el final de la splash */
+      animation: loginReveal 0.85s var(--ease-cinematic) 2.75s forwards;
+    }
+
+    @keyframes loginReveal {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 32px, 0) scale(0.98);
+      }
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+    }
+
+    /* Tarjeta Monolítica de Alta Cocina */
+    .login-monolith {
+      position: relative;
+      background: linear-gradient(175deg, rgba(24, 27, 36, 0.95) 0%, rgba(17, 19, 25, 0.98) 100%);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: 24px;
+      padding: clamp(22px, 6vw, 36px) clamp(18px, 5vw, 32px);
+      contain: content;
+    }
+
+    /* Micro-borde superior iluminado por fuego gastronómico */
+    .login-monolith::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 15%;
+      right: 15%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 122, 26, 0.7), rgba(245, 158, 11, 0.7), transparent);
+    }
+
+    /* Encabezado Editorial */
+    .brand-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .brand-symbol-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(255, 122, 26, 0.16) 0%, rgba(217, 84, 0, 0.06) 100%);
+      border: 1px solid rgba(255, 122, 26, 0.28);
+      margin-bottom: 16px;
+      transform: translate3d(0, 0, 0);
+      transition: transform 0.2s ease;
+    }
+
+    .brand-symbol-link:active {
+      transform: scale(0.95);
+    }
+
+    .brand-symbol-svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .badge-capsule {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(255, 122, 26, 0.1);
+      border: 1px solid rgba(255, 122, 26, 0.22);
+      margin-bottom: 12px;
+    }
+
+    .pulse-indicator {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--color-amber-primary);
+      will-change: transform, opacity;
+      animation: pulseIndicator 2.2s infinite ease-in-out;
+    }
+
+    @keyframes pulseIndicator {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.6;
+      }
+      50% {
+        transform: scale(1.4);
+        opacity: 1;
+      }
+    }
+
+    .badge-capsule-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--color-amber-vibrant);
+      text-transform: uppercase;
+    }
+
+    .auth-title {
+      font-size: clamp(1.45rem, 5vw, 1.85rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--color-text-title);
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    .auth-subtitle {
+      font-size: 0.88rem;
+      color: var(--color-text-muted);
+      line-height: 1.45;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+
+    /* Formulario Ergonómico */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--color-text-body);
+      margin-bottom: 8px;
+    }
+
+    .input-shell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: rgba(10, 11, 15, 0.65);
+      border: 1.5px solid var(--color-border-subtle);
+      border-radius: 14px;
+      /* Área táctil mínima asegurada para Fitts' Law */
+      min-height: 52px;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .input-shell:focus-within {
+      border-color: var(--color-border-focus);
+      background: rgba(14, 16, 22, 0.9);
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 16px;
+      width: 20px;
+      height: 20px;
+      color: var(--color-text-dim);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .field-native {
+      width: 100%;
+      height: 52px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--color-text-title);
+      font-family: inherit;
+      font-size: 1rem; /* 16px exactos: Evita zoom forzado en iOS Safari */
+      padding: 0 16px 0 48px;
+    }
+
+    .field-native::placeholder {
+      color: var(--color-text-dim);
+      font-size: 0.9rem;
+    }
+
+    /* Fila de Utilidades (Recordar / Olvido) */
+    .auth-utilities {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 6px 0 24px 0;
+      font-size: 0.82rem;
+    }
+
+    .remember-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: var(--color-text-muted);
+      /* Ley de Fitts: target táctil holgado */
+      min-height: 48px;
+    }
+
+    .native-checkbox {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      background: rgba(10, 11, 15, 0.6);
+      display: grid;
+      place-content: center;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .native-checkbox:checked {
+      background: var(--color-amber-primary);
+      border-color: var(--color-amber-primary);
+    }
+
+    .native-checkbox:checked::after {
+      content: "";
+      width: 9px;
+      height: 5px;
+      border-left: 2px solid #FFFFFF;
+      border-bottom: 2px solid #FFFFFF;
+      transform: rotate(-45deg) translate3d(1px, -1px, 0);
+    }
+
+    .ghost-link {
+      color: var(--color-amber-vibrant);
+      text-decoration: none;
+      font-weight: 600;
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      transition: opacity 0.2s ease;
+    }
+
+    .ghost-link:hover, .ghost-link:focus-visible {
+      text-decoration: underline;
+      opacity: 0.9;
+    }
+
+    /* Botón Primario de Alta Potencia Táctil */
+    .btn-submit-primary {
+      position: relative;
+      width: 100%;
+      min-height: 54px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #FF7A1A 0%, #E65A00 100%);
+      color: #FFFFFF;
+      font-family: inherit;
+      font-size: 0.98rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transform: translate3d(0, 0, 0);
+      will-change: transform;
+      transition: transform 0.18s var(--ease-cinematic), filter 0.18s ease;
+      touch-action: manipulation;
+    }
+
+    .btn-submit-primary:hover {
+      filter: brightness(1.08);
+    }
+
+    .btn-submit-primary:active {
+      transform: scale(0.975);
+      filter: brightness(0.95);
+    }
+
+    .btn-arrow-icon {
+      width: 18px;
+      height: 18px;
+      transform: translate3d(0, 0, 0);
+      transition: transform 0.2s ease;
+    }
+
+    .btn-submit-primary:hover .btn-arrow-icon {
+      transform: translate3d(3px, 0, 0);
+    }
+
+    /* Separador Elegante */
+    .editorial-divider {
+      position: relative;
+      text-align: center;
+      margin: 24px 0 20px 0;
+    }
+
+    .editorial-divider::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--color-border-subtle);
+    }
+
+    .divider-tag {
+      position: relative;
+      display: inline-block;
+      padding: 0 12px;
+      background: #151821;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--color-text-dim);
+      text-transform: uppercase;
+    }
+
+    /* Acceso Rápido / Biométrica */
+    .quick-access-strip {
+      display: flex;
+      gap: 12px;
+    }
+
+    .quick-pill-btn {
+      flex: 1;
+      min-height: 48px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--color-border-subtle);
+      color: var(--color-text-muted);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .quick-pill-btn:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.15);
+      color: var(--color-text-title);
+    }
+
+    .quick-pill-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Pie de Registro */
+    .signup-nudge {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+    }
+
+    .nudge-action {
+      color: var(--color-amber-vibrant);
+      text-decoration: none;
+      font-weight: 700;
+      margin-left: 4px;
+      padding: 6px 2px;
+      display: inline-flex;
+      align-items: center;
+      min-height: 48px;
+    }
+
+    .nudge-action:hover {
+      text-decoration: underline;
+    }
+
+    /* ==========================================================================
+       6. ADAPTABILIDAD ULTRA-ESTRICTA (PANTALLAS DESDE 320PX)
+       ========================================================================== */
+    @media (max-width: 360px) {
+      .login-monolith {
+        padding: 20px 14px;
+        border-radius: 18px;
+      }
+      .brand-hero-text, .trail-layer {
+        font-size: 1.85rem;
+      }
+      .auth-utilities {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+      }
+      .quick-access-strip {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       AMBIENTE CROMÁTICO (GPU ACCELERATED - ZERO REPAINTS)
+       ======================================================================== -->
+  <div class="ambient-canvas" aria-hidden="true">
+    <div class="ambient-glow-1"></div>
+    <div class="ambient-glow-2"></div>
+  </div>
+
+  <!-- ========================================================================
+       SPLASH SCREEN CINEMÁTICA CON RASTRO Y REVELADO LETRA POR LETRA (PURE CSS3)
+       ======================================================================== -->
+  <aside class="splash-stage" id="splashScreen" aria-label="Pantalla de apertura Todo Delivery">
+    <div class="splash-brand-cluster">
+      
+      <!-- Eco Rastro 3 (Staggered Ghost Trail) -->
+      <div class="trail-layer trail-3" aria-hidden="true">
+        TODO DELIVERY
+      </div>
+      
+      <!-- Eco Rastro 2 (Staggered Ghost Trail) -->
+      <div class="trail-layer trail-2" aria-hidden="true">
+        TODO DELIVERY
+      </div>
+      
+      <!-- Eco Rastro 1 (Staggered Ghost Trail) -->
+      <div class="trail-layer trail-1" aria-hidden="true">
+        TODO DELIVERY
+      </div>
+
+      <!-- Tipografía Principal Letra por Letra -->
+      <div class="brand-hero-text">
+        <span class="char" style="--c: 0;">T</span>
+        <span class="char" style="--c: 1;">O</span>
+        <span class="char" style="--c: 2;">D</span>
+        <span class="char" style="--c: 3;">O</span>
+        <span class="char-space"></span>
+        <span class="char char-accent" style="--c: 5;">D</span>
+        <span class="char char-accent" style="--c: 6;">E</span>
+        <span class="char char-accent" style="--c: 7;">L</span>
+        <span class="char char-accent" style="--c: 8;">I</span>
+        <span class="char char-accent" style="--c: 9;">V</span>
+        <span class="char char-accent" style="--c: 10;">E</span>
+        <span class="char char-accent" style="--c: 11;">R</span>
+        <span class="char char-accent" style="--c: 12;">Y</span>
+      </div>
+
+      <div class="splash-kicker" aria-hidden="true">
+        ALTA GASTRONOMÍA &amp; COURIER
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ========================================================================
+       INTERFAZ PRINCIPAL DE LOGIN (PANTALLA REVELADA)
+       ======================================================================== -->
+  <main class="app-viewport">
+    <div class="login-container">
+      
+      <section class="login-monolith">
+        
+        <!-- Identidad de Marca -->
+        <header class="brand-header">
+          <div class="brand-symbol-link">
+            <!-- Emblema Cloche & Rayo Gastronómico (SVG Puro Optimizado) -->
+            <svg class="brand-symbol-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M16 5V7M9 7H23M6 21H26C26 15.4772 21.5228 11 16 11C10.4772 11 6 15.4772 6 21Z" stroke="#FF7A1A" stroke-width="2" stroke-linecap="round"/>
+              <path d="M4 25H28" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
+              <path d="M13 18L16 14L15 20L19 16" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+
+          <div>
+            <div class="badge-capsule">
+              <span class="pulse-indicator"></span>
+              <span class="badge-capsule-text">Red Exclusiva</span>
+            </div>
+          </div>
+
+          <h1 class="auth-title">Todo Delivery</h1>
+          <p class="auth-subtitle">Acceso reservado a la más selecta red gastronómica y de envíos de autor.</p>
+        </header>
+
+        <!-- Formulario Autocontenido -->
+        <form class="auth-form" action="#" method="POST" autocomplete="on">
+          
+          <!-- Campo 1: Identificador / Teléfono -->
+          <div class="form-group">
+            <label class="field-label" for="userAccount">Identificador o Teléfono</label>
+            <div class="input-shell">
+              <div class="input-icon" aria-hidden="true">
+                <!-- SVG Usuario -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <input 
+                type="text" 
+                id="userAccount" 
+                name="account" 
+                class="field-native" 
+                placeholder="Ej. usuario o +54 9 11..." 
+                required 
+                autocomplete="username"
+                autocapitalize="none">
+            </div>
+          </div>
+
+          <!-- Campo 2: Clave Secreta -->
+          <div class="form-group">
+            <label class="field-label" for="userPasscode">Clave de Seguridad</label>
+            <div class="input-shell">
+              <div class="input-icon" aria-hidden="true">
+                <!-- SVG Candado -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </div>
+              <input 
+                type="password" 
+                id="userPasscode" 
+                name="password" 
+                class="field-native" 
+                placeholder="••••••••••••" 
+                required 
+                autocomplete="current-password">
+            </div>
+          </div>
+
+          <!-- Controles de Utilidad -->
+          <div class="auth-utilities">
+            <label class="remember-control">
+              <input type="checkbox" name="remember" class="native-checkbox">
+              <span>Mantener sesión</span>
+            </label>
+            <a href="#recuperar" class="ghost-link">¿Olvidaste tu clave?</a>
+          </div>
+
+          <!-- Botón de Entrada Principal (Ley de Fitts: 54px alto) -->
+          <button type="submit" class="btn-submit-primary">
+            <span>Iniciar Experiencia</span>
+            <svg class="btn-arrow-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="4" y1="10" x2="16" y2="10"></line>
+              <polyline points="11 5 16 10 11 15"></polyline>
+            </svg>
+          </button>
+
+          <!-- Divisor Editorial -->
+          <div class="editorial-divider">
+            <span class="divider-tag">O ingreso rápido</span>
+          </div>
+
+          <!-- Acceso Biométrico / Rápido Alternativo -->
+          <div class="quick-access-strip">
+            <button type="button" class="quick-pill-btn" aria-label="Ingreso con Huella o FaceID">
+              <!-- SVG Huella / Sensor -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF7A1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 11c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3z"></path>
+                <path d="M12 2a10 10 0 0 0-7.07 17.07"></path>
+                <path d="M12 6a6 6 0 0 0-4.24 10.24"></path>
+                <path d="M18.36 5.64A9 9 0 0 1 20 12"></path>
+              </svg>
+              <span>Biometría</span>
+            </button>
+
+            <a href="#contacto" class="quick-pill-btn" aria-label="Soporte y Concierge">
+              <!-- SVG Asistente / Concierge -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Concierge</span>
+            </a>
+          </div>
+
+          <!-- Pie de Registro -->
+          <div class="signup-nudge">
+            <span>¿Aún no tienes membresía?</span>
+            <a href="#solicitar" class="nudge-action">Solicitar Acceso</a>
+          </div>
+
+        </form>
+
+      </section>
+
+    </div>
+  </main>
+
+</body>
+</html>

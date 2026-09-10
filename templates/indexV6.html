@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Todo Delivery · Pico Truncado</title>
+<style>
+  :root{
+    --orange:#FF5A1F;
+    --orange-deep:#E14A0F;
+    --orange-soft:#FFB088;
+    --white:#FFFFFF;
+    --ink:#1A1A1A;
+    --grey-bg:#F5F5F5;
+    --grey-text:#8A8A8A;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;background:var(--white);overflow:hidden;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    position:relative;
+    height:100vh;
+  }
+
+  /* ================= LOGIN (capa de fondo, ya renderizada) ================= */
+  .login{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:32px 28px;
+  }
+  .login-logo{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:36px;
+    opacity:0;
+    transform:translateY(14px);
+  }
+  .login-logo svg{width:26px;height:26px;flex-shrink:0;}
+  .login-logo span{font-size:16px;font-weight:700;color:var(--ink);}
+
+  .login-title{
+    font-size:26px;
+    font-weight:700;
+    color:var(--ink);
+    letter-spacing:-0.02em;
+    opacity:0;
+    transform:translateY(14px);
+  }
+  .login-sub{
+    margin-top:6px;
+    font-size:14px;
+    color:var(--grey-text);
+    opacity:0;
+    transform:translateY(14px);
+  }
+
+  .field{margin-top:22px;opacity:0;transform:translateY(14px);}
+  .field label{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+  .field input{
+    width:100%;height:52px;border:none;border-radius:10px;
+    background:var(--grey-bg);padding:0 16px;font-size:15px;color:var(--ink);outline:none;
+  }
+  .field input:focus{outline:2px solid var(--orange);outline-offset:1px;}
+
+  .forgot{margin-top:12px;font-size:13px;font-weight:600;color:var(--orange-deep);align-self:flex-end;opacity:0;transform:translateY(14px);}
+
+  .btn-login{
+    margin-top:28px;width:100%;height:52px;border:none;border-radius:10px;
+    background:var(--orange);color:var(--white);font-size:16px;font-weight:700;
+    opacity:0;transform:translateY(14px);
+  }
+  .btn-login:active{background:var(--orange-deep);}
+
+  .signup{margin-top:20px;text-align:center;font-size:13px;color:var(--grey-text);opacity:0;transform:translateY(14px);}
+  .signup b{color:var(--ink);}
+
+  .go .login-logo{animation:riseIn .45s cubic-bezier(.2,.8,.2,1) .05s forwards;}
+  .go .login-title{animation:riseIn .45s cubic-bezier(.2,.8,.2,1) .12s forwards;}
+  .go .login-sub{animation:riseIn .45s cubic-bezier(.2,.8,.2,1) .18s forwards;}
+  .go .field:nth-of-type(1){animation:riseIn .45s cubic-bezier(.2,.8,.2,1) .26s forwards;}
+  .go .field:nth-of-type(2){animation:riseIn .45s cubic-bezier(.2,.8,.2,1) .34s forwards;}
+  .go .forgot{animation:riseIn .45s cubic-bezier(.2,.8,.2,1) .40s forwards;}
+  .go .btn-login{animation:riseIn .45s cubic-bezier(.2,.8,.2,1) .48s forwards;}
+  .go .signup{animation:riseIn .45s cubic-bezier(.2,.8,.2,1) .56s forwards;}
+
+  @keyframes riseIn{to{opacity:1;transform:translateY(0);}}
+
+  /* ================= SPLASH (cortina que se desliza) ================= */
+  .curtain{
+    position:absolute;inset:0;background:var(--orange);
+    display:flex;align-items:center;justify-content:center;
+    will-change:transform;transform:translateY(0);
+    transition:transform .65s cubic-bezier(.65,0,.35,1);
+    z-index:5;
+  }
+  .curtain.lift{transform:translateY(-100%);}
+
+  .mark{display:flex;flex-direction:column;align-items:center;}
+
+  /* ---- Escena: estepa + molino (identidad de Pico Truncado) ---- */
+  .scene{width:180px;height:150px;overflow:visible;}
+
+  .hill{
+    opacity:0;
+    animation:fadeIn .5s ease-out .05s forwards;
+  }
+  @keyframes fadeIn{to{opacity:1;}}
+
+  /* aspas: cada una llega desde una dirección distinta y se ensambla en el buje */
+  .blade{opacity:0;}
+  .blade1{transform:translate(0,-38px);animation:assemble .45s cubic-bezier(.2,.8,.2,1) .35s forwards;}
+  .blade2{transform:translate(34px,26px);animation:assemble .45s cubic-bezier(.2,.8,.2,1) .45s forwards;}
+  .blade3{transform:translate(-34px,26px);animation:assemble .45s cubic-bezier(.2,.8,.2,1) .55s forwards;}
+  @keyframes assemble{to{opacity:1;transform:translate(0,0);}}
+
+  /* una vez ensamblado, el rotor gira despacio y sin parar: ES el indicador de carga */
+  .rotor{
+    transform-origin:100px 46px;
+    animation:spin 2.2s linear 1s infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* rachas de viento sutiles, sin costo de layout */
+  .gust{opacity:0;animation:gust 2.4s ease-in-out .9s infinite;}
+  .gust2{animation-delay:1.4s;}
+  @keyframes gust{0%,100%{opacity:0;}50%{opacity:.55;}}
+
+  .wordmark{
+    margin-top:14px;font-size:24px;font-weight:700;letter-spacing:-0.02em;color:var(--white);
+    opacity:0;transform:translateY(8px);
+    animation:riseIn .4s cubic-bezier(.2,.8,.2,1) .95s forwards;
+  }
+  .place{
+    margin-top:8px;font-size:14px;font-weight:700;color:var(--white);
+    opacity:0;animation:riseIn .4s cubic-bezier(.2,.8,.2,1) 1.08s forwards;
+  }
+  .place-sub{
+    margin-top:3px;font-size:12.5px;font-weight:500;color:var(--orange-soft);text-align:center;
+    max-width:220px;line-height:1.4;
+    opacity:0;animation:riseIn .4s cubic-bezier(.2,.8,.2,1) 1.2s forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .hill,.blade,.wordmark,.place,.place-sub,
+    .login-logo,.login-title,.login-sub,.field,.forgot,.btn-login,.signup{
+      animation:none !important;opacity:1 !important;transform:none !important;
+    }
+    .rotor{animation:none !important;}
+    .gust{display:none;}
+    .curtain{display:none;}
+  }
+</style>
+</head>
+<body>
+
+  <!-- LOGIN: montado detrás de la cortina, listo para desvelarse -->
+  <div class="login" id="login">
+    <div class="login-logo">
+      <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 8 L8 16 L16 16" fill="none" stroke="#FF5A1F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M32 32 L32 24 L24 24" fill="none" stroke="#FF5A1F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="20" r="3" fill="#FF5A1F"/>
+      </svg>
+      <span>Todo Delivery</span>
+    </div>
+
+    <div class="login-title">Bienvenido de nuevo</div>
+    <div class="login-sub">Ingresa para seguir tus envíos.</div>
+
+    <div class="field">
+      <label for="phone">Teléfono o correo</label>
+      <input id="phone" type="text" inputmode="email" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="pass">Contraseña</label>
+      <input id="pass" type="password" autocomplete="current-password">
+    </div>
+
+    <div class="forgot">¿Olvidaste tu contraseña?</div>
+    <button class="btn-login" type="button">Iniciar sesión</button>
+    <div class="signup">¿Aún no tienes cuenta? <b>Regístrate</b></div>
+  </div>
+
+  <!-- SPLASH: cortina que se levanta y desvela el login -->
+  <div class="curtain" id="curtain">
+    <div class="mark">
+
+      <svg class="scene" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+        <!-- rachas de viento -->
+        <g stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" fill="none">
+          <path class="gust" d="M18 40 L42 40"/>
+          <path class="gust gust2" d="M14 52 L36 52"/>
+        </g>
+
+        <!-- estepa patagónica -->
+        <path class="hill" d="M0 130 C 40 108, 80 122, 100 116 C 130 108, 160 122, 200 112 L200 150 L0 150 Z"
+              fill="#FFFFFF" opacity="0.95"/>
+
+        <!-- molino: torre + buje -->
+        <line x1="100" y1="116" x2="100" y2="46" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+
+        <g class="rotor">
+          <g class="blade blade1">
+            <path d="M100 46 L96 10 C 100 6, 104 6, 100 12 Z" fill="#FFFFFF"/>
+          </g>
+          <g class="blade blade2">
+            <path d="M100 46 L128 62 C 132 58, 130 54, 124 58 Z" fill="#FFFFFF"/>
+          </g>
+          <g class="blade blade3">
+            <path d="M100 46 L72 62 C 68 58, 70 54, 76 58 Z" fill="#FFFFFF"/>
+          </g>
+          <circle cx="100" cy="46" r="5" fill="#FFFFFF"/>
+        </g>
+      </svg>
+
+      <div class="wordmark">Todo Delivery</div>
+      <div class="place">Pico Truncado, Santa Cruz</div>
+      <div class="place-sub">Hecha en la tierra donde el viento patagónico nunca se detiene.</div>
+    </div>
+  </div>
+
+  <script>
+    // La cortina se levanta y el login se desvela en cascada.
+    setTimeout(function(){
+      document.getElementById('curtain').classList.add('lift');
+      document.getElementById('login').classList.add('go');
+    }, 2100);
+  </script>
+
+</body>
+</html>
