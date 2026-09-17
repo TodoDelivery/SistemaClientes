@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#090B10" />
+  <title>Todo Delivery - Seguimiento</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="tema_cliente.js"></script>
+  <link rel="stylesheet" href="estilos_cliente.css" />
+</head>
+
+<body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
+
+  <header id="appBar"></header>
+
+  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-3 text-sm font-semibold text-brand-textMuted">
+    <svg class="animate-spin h-6 w-6 text-brand-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+    </svg>
+    Cargando...
+  </div>
+
+  <main id="contenidoPagina" class="hidden mx-auto w-full max-w-xl px-4 pt-4 espacio-nav flex flex-col gap-4">
+
+    <!-- Cargando el pedido -->
+    <div id="cargandoPedido" class="space-y-4" aria-hidden="true">
+      <div class="skeleton h-56 rounded-3xl"></div>
+      <div class="skeleton h-36 rounded-3xl"></div>
+      <div class="skeleton h-20 rounded-3xl"></div>
+    </div>
+
+    <!-- Sin pedido -->
+    <section id="noActiveOrderState" class="hidden min-h-[60dvh] flex flex-col items-center justify-center text-center px-6">
+      <div class="w-20 h-20 rounded-3xl bg-brand-surface border border-brand-border flex items-center justify-center text-4xl" aria-hidden="true">📡</div>
+      <h2 id="tituloSinPedido" class="mt-5 text-xl font-extrabold">No tenés pedidos en curso</h2>
+      <p id="textoSinPedido" class="mt-2 text-sm text-brand-textMuted max-w-xs">
+        Cuando pidas un envío vas a poder seguir a tu cadete en vivo y chatear desde acá.
+      </p>
+      <a href="crear_pedido.html"
+        class="mt-6 h-12 px-6 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm flex items-center">Pedir un envío</a>
+    </section>
+
+    <div id="trackingPanel" class="hidden flex flex-col gap-4">
+
+      <!-- Mapa: retiro, entrega y cadete -->
+      <section id="contenedorMapaSeguimiento" aria-label="Mapa del recorrido"
+        class="relative isolate h-[34dvh] min-h-[220px] max-h-[340px] rounded-3xl overflow-hidden border border-brand-border bg-brand-bg">
+        <div id="mapaSeguimiento" class="absolute inset-0"></div>
+        <button id="btnCentrarMapa" type="button" aria-label="Centrar el mapa en el recorrido" title="Centrar mapa"
+          class="absolute bottom-3 right-3 z-[500] w-11 h-11 rounded-full bg-brand-surface/95 backdrop-blur border border-brand-border text-white flex items-center justify-center shadow-xl">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" />
+            <circle cx="12" cy="12" r="2.5" />
+          </svg>
+        </button>
+      </section>
+
+      <!-- Estado del pedido -->
+      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-4" aria-labelledby="tituloEstado">
+        <div class="flex items-start gap-3">
+          <div id="iconoEstado" class="relative w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0" aria-hidden="true"></div>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold text-brand-textMuted">Pedido <span id="labelIdPedido"></span></p>
+            <h2 id="tituloEstado" class="text-lg font-extrabold leading-snug" aria-live="polite"></h2>
+            <p id="detalleEstado" class="text-sm text-brand-textMuted"></p>
+          </div>
+        </div>
+
+        <ol id="pasosPedido" class="grid grid-cols-4 gap-1.5" aria-label="Progreso del pedido"></ol>
+
+        <p id="avisoBusqueda"
+          class="hidden flex items-center gap-2 px-3 py-2.5 rounded-xl bg-brand-warning/10 border border-brand-warning/30 text-brand-warning text-sm font-semibold">
+          <span aria-hidden="true">⏳</span>
+          <span>Mantené esta pantalla abierta mientras buscamos tu cadete.</span>
+        </p>
+
+        <button id="btnCancelarPedido" type="button"
+          class="hidden w-full h-12 rounded-xl border border-brand-danger/40 text-brand-danger font-bold text-sm hover:bg-brand-danger/10 transition-colors disabled:opacity-60">
+          Cancelar pedido
+        </button>
+
+        <div id="accionesFinales" class="hidden grid grid-cols-2 gap-2">
+          <a href="crear_pedido.html"
+            class="h-12 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm flex items-center justify-center">Pedir otro envío</a>
+          <a href="dashboard.html"
+            class="h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm flex items-center justify-center">Mis pedidos</a>
+        </div>
+      </section>
+
+      <!-- Cadete asignado -->
+      <section id="tarjetaCadete" class="hidden bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-3" aria-labelledby="cadeteNombreText">
+        <div class="flex items-center gap-3">
+          <div id="cadeteAvatarInitials" class="w-12 h-12 rounded-2xl bg-brand-accent/15 text-brand-accent font-black flex items-center justify-center shrink-0"></div>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-bold text-brand-textMuted">Tu cadete</p>
+            <h2 id="cadeteNombreText" class="text-base font-extrabold truncate"></h2>
+            <p id="cadeteVehiculo" class="text-sm text-brand-textMuted truncate"></p>
+          </div>
+          <!-- Chapa patente argentina -->
+          <div id="cadetePatenteBadge" class="hidden">
+            <span class="text-[7px] font-black text-blue-400 tracking-widest leading-none uppercase">Argentina</span>
+            <span id="cadetePatenteText" class="text-xs font-black font-mono text-white tracking-widest leading-tight"></span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-brand-surfaceLight/60 text-sm">
+          <span id="cadeteGpsStatus" class="flex items-center gap-2 min-w-0 truncate text-brand-textMuted"></span>
+          <span id="telemetriaVelocidad" class="font-bold text-brand-accent shrink-0"></span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <a id="btnLlamarCadete" href="#"
+            class="hidden h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm flex items-center justify-center gap-2 hover:border-brand-accent/60 transition-colors">
+            <svg class="w-5 h-5 text-brand-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" />
+            </svg>
+            Llamar
+          </a>
+          <button id="btnIrAlChat" type="button"
+            class="col-span-2 h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm flex items-center justify-center gap-2 hover:border-brand-accent/60 transition-colors">
+            <svg class="w-5 h-5 text-brand-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+            </svg>
+            Chat
+            <span id="badgeNoLeidos" class="hidden min-w-5 h-5 px-1.5 rounded-full bg-brand-accent text-brand-bg text-xs font-black items-center justify-center"></span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Detalle del pedido -->
+      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4" aria-label="Detalle del pedido">
+        <div class="flex items-start gap-3">
+          <span id="emojiPaquete" class="w-11 h-11 rounded-2xl bg-brand-surfaceLight flex items-center justify-center text-xl shrink-0" aria-hidden="true"></span>
+          <div class="min-w-0 flex-1">
+            <p id="labelInformPedido" class="font-bold break-words"></p>
+            <p id="labelTipoFecha" class="text-sm text-brand-textMuted"></p>
+          </div>
+          <div class="text-right shrink-0">
+            <p id="labelCostePedido" class="text-lg font-black"></p>
+            <p class="text-xs text-brand-textMuted">Efectivo</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Chat con el cadete -->
+      <section id="tarjetaChat" class="hidden scroll-mt-20 bg-brand-surface border border-brand-border rounded-3xl overflow-hidden" aria-labelledby="tituloChat">
+        <div class="px-4 py-3 border-b border-brand-border flex items-center justify-between gap-2">
+          <h2 id="tituloChat" class="text-base font-extrabold">Chat con tu cadete</h2>
+          <span id="chipCanal" class="text-xs font-semibold px-2 py-0.5 rounded-full"></span>
+        </div>
+
+        <div id="clienteChatMessages" class="h-72 overflow-y-auto p-4 space-y-3" role="log" aria-live="polite">
+          <p id="chatPlaceholder" class="text-center text-sm text-brand-textMuted py-8">
+            Escribile si necesitás darle una indicación. Los mensajes no se guardan al salir.
+          </p>
+        </div>
+
+        <div id="respuestasRapidas" class="flex gap-2 overflow-x-auto sin-scrollbar px-3 pt-3"></div>
+
+        <form id="formChat" class="p-3 flex gap-2">
+          <label for="clienteChatInput" class="sr-only">Mensaje para el cadete</label>
+          <input id="clienteChatInput" type="text" maxlength="500" autocomplete="off" enterkeyhint="send"
+            placeholder="Escribí un mensaje..."
+            class="flex-1 min-w-0 h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-white placeholder:text-brand-textMuted/70 focus:outline-none focus:border-brand-accent" />
+          <button id="btnEnviarChat" type="submit" aria-label="Enviar mensaje"
+            class="w-12 h-12 rounded-xl bg-brand-accent text-brand-bg flex items-center justify-center shrink-0 active:scale-95 transition-transform disabled:opacity-50">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 2 11 13" />
+              <path d="M22 2 15 22l-4-9-9-4 20-7z" />
+            </svg>
+          </button>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <nav id="barraInferior"></nav>
+
+  <script type="module">
+    import { supabase } from './conexion_supabase.js';
+    import {
+      ESTADOS_BUSQUEDA, iniciarBusquedaCadete, detenerBusqueda, obtenerBusquedaActiva, obtenerEstadoBusqueda,
+      obtenerMotivoCancelacion, solicitarRevisionDePedido, registrarRechazoCadete, cancelarBusquedaPorCliente,
+      suscribirMotorAsignacion
+    } from './script_asignacion.js';
+    import { requerirCliente, buscarPedidoEnCurso, registrarLimpiezaAntesDeSalir } from './sesion_cliente.js';
+    import {
+      montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar,
+      formatearPesos, formatearFechaPedido, emojiPaquete, iniciales
+    } from './ui_cliente.js';
+
+    const ESTADOS_CON_CADETE = ['asignado', 'en_camino_entrega', 'entregado', 'rendido'];
+    const ESTADOS_CHAT = ['asignado', 'en_camino_entrega'];
+    const ESTADOS_FINALES = ['entregado', 'rendido', 'cancelado'];
+    // Orden en que avanza un pedido: un evento atrasado no puede volver a mostrar una etapa anterior
+    const ETAPA_ESTADO = { pendiente: 0, libre: 0, en_confirmacion: 0, asignado: 1, en_camino_entrega: 2, entregado: 3, rendido: 4, cancelado: 5 };
+    const PASOS = ['Buscando', 'Asignado', 'En camino', 'Entregado'];
+    const RESPUESTAS_RAPIDAS = ['Ya salgo', 'Estoy esperando afuera', '¿Cuánto falta?', 'Tocá el timbre'];
+
+    let clienteActual = null;
+    let pedidoActivo = null;
+    let channelPedidoPrivado = null;
+    let idCadeteCargado = null;
+    let nombreCadete = 'Tu cadete';
+    let estadoMostrado = null;
+    let paginaCerrada = false;
+
+    let mapaSeguimiento = null;
+    let puntosRuta = [];
+    let markerCadete = null;
+
+    let ultimaSenalGps = 0;
+    let relojGps = null;
+    let chatVisible = false;
+    let noLeidos = 0;
+
+    const $ = (id) => document.getElementById(id);
+
+    // El motor no toca el DOM: avisa por eventos y esta página decide qué mostrar
+    suscribirMotorAsignacion((evento) => {
+      if (!esPedidoEnPantalla(evento.idPedido)) return;
+      if (evento.tipo === 'pedido') {
+        aplicarCambioPedido(evento.pedido);
+      } else {
+        renderPedido(); // 'busqueda': nuevo texto del panel | 'finalizada': ocultar aviso
+      }
+    });
+
+    // Salir de la página pausa la búsqueda: se avisa antes y se liberan recursos al irse
+    window.addEventListener('beforeunload', (e) => {
+      if (obtenerBusquedaActiva()) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+    window.addEventListener('pagehide', liberarRecursos);
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) window.location.reload(); // restaurada desde bfcache: motor y canal ya se cerraron
+    });
+
+    iniciar();
+
+    async function iniciar() {
+      try {
+        clienteActual = await requerirCliente();
+        if (!clienteActual) return;
+
+        montarLayoutCliente(clienteActual, 'seguimiento', 'Seguimiento');
+        registrarLimpiezaAntesDeSalir(liberarRecursos);
+        registrarEventos();
+
+        const idSolicitado = Number(new URLSearchParams(window.location.search).get('id_pedido')) || null;
+        const pedido = idSolicitado
+          ? await leerPedido(idSolicitado)
+          : await buscarPedidoEnCurso(clienteActual.id_cliente);
+
+        $('cargandoPedido').classList.add('hidden');
+
+        if (!pedido) {
+          mostrarEstadoVacio(idSolicitado);
+          return;
+        }
+        if (!idSolicitado) {
+          history.replaceState(null, '', `?id_pedido=${encodeURIComponent(pedido.id_pedido)}`);
+        }
+        abrirSeguimiento(pedido);
+      } catch (err) {
+        console.error('Error al iniciar el seguimiento:', err);
+        mostrarErrorPagina(err.message || 'Error de conexión con el servidor.');
+      }
+    }
+
+    function registrarEventos() {
+      $('formChat').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = $('clienteChatInput');
+        const texto = input.value.trim();
+        if (!texto) return;
+        input.value = '';
+        enviarMensajeChat(texto);
+      });
+
+      $('respuestasRapidas').innerHTML = RESPUESTAS_RAPIDAS.map(texto => `
+        <button type="button" data-rapida
+          class="shrink-0 h-9 px-3.5 rounded-full bg-brand-surfaceLight border border-brand-border text-sm font-semibold text-brand-textMuted hover:text-white hover:border-brand-accent/60 transition-colors">${texto}</button>
+      `).join('');
+      $('respuestasRapidas').querySelectorAll('[data-rapida]').forEach(btn => {
+        btn.addEventListener('click', () => enviarMensajeChat(btn.textContent.trim()));
+      });
+
+      $('btnIrAlChat').addEventListener('click', irAlChat);
+      $('btnCancelarPedido').addEventListener('click', handleCancelarPedido);
+      $('btnCentrarMapa').addEventListener('click', () => encuadrarMapa());
+
+      // Mensajes no leídos: se cuentan mientras el chat no está a la vista
+      new IntersectionObserver(([entrada]) => {
+        chatVisible = entrada.isIntersecting;
+        if (chatVisible) {
+          noLeidos = 0;
+          renderNoLeidos();
+        }
+      }, { threshold: 0.3 }).observe($('clienteChatMessages'));
+    }
+
+    async function leerPedido(idPedido) {
+      const { data, error } = await supabase
+        .from('Pedidos')
+        .select('*')
+        .eq('id_pedido', idPedido)
+        .eq('id_cliente', clienteActual.id_cliente)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    }
+
+    function mostrarEstadoVacio(idSolicitado) {
+      $('trackingPanel').classList.add('hidden');
+      $('noActiveOrderState').classList.remove('hidden');
+      if (idSolicitado) {
+        $('tituloSinPedido').textContent = `No encontramos el pedido #${idSolicitado}`;
+        $('textoSinPedido').textContent = 'Puede que no exista o que pertenezca a otra cuenta.';
+      }
+      marcarSeguimientoActivo(false);
+    }
+
+    function esPedidoEnPantalla(idPedido) {
+      return Boolean(pedidoActivo && Number(pedidoActivo.id_pedido) === Number(idPedido));
+    }
+
+    // -------------------------------------------------------------------------
+    // PANEL DE SEGUIMIENTO
+    // -------------------------------------------------------------------------
+    function abrirSeguimiento(pedido) {
+      pedidoActivo = pedido;
+
+      $('noActiveOrderState').classList.add('hidden');
+      $('trackingPanel').classList.remove('hidden');
+      $('labelIdPedido').textContent = `#${pedido.id_pedido}`;
+      $('labelInformPedido').textContent = pedido.inform_pedido || 'Envío';
+      $('labelTipoFecha').textContent = [pedido.tipo_paquete, formatearFechaPedido(pedido.fecha_pedido)].filter(Boolean).join(' · ');
+      $('labelCostePedido').textContent = formatearPesos(pedido.coste_pedido);
+      $('emojiPaquete').textContent = emojiPaquete(pedido.tipo_paquete);
+
+      inicializarMapaSeguimiento(pedido);
+      conectarCanalPrivadoPedido(pedido.id_pedido);
+      renderPedido();
+
+      // Pedido nuevo o búsqueda que quedó a medias: arrancar o reanudar.
+      // Si quedó vieja, el motor la cancela en vez de ofrecerla.
+      if (ESTADOS_BUSQUEDA.includes(pedido.estado_pedido)) {
+        arrancarMotorAsignacion(pedido.id_pedido);
+      }
+    }
+
+    function arrancarMotorAsignacion(idPedido) {
+      if (!('locks' in navigator)) {
+        iniciarBusquedaCadete(idPedido);
+        return;
+      }
+
+      // Si el pedido está abierto en varias pestañas, solo una corre el motor. Las demás esperan el
+      // bloqueo y lo toman si esa pestaña se cierra: nunca hay dos motores ofreciendo el mismo pedido.
+      navigator.locks.request(`td-asignacion-pedido-${idPedido}`, async () => {
+        if (paginaCerrada || !esPedidoEnPantalla(idPedido)) return;
+        if (!ESTADOS_BUSQUEDA.includes(pedidoActivo.estado_pedido)) return;
+
+        const b = iniciarBusquedaCadete(idPedido);
+        renderPedido();
+        await b.terminada;
+      }).catch((err) => {
+        console.warn('[Asignación] Web Locks no disponible, se inicia sin bloqueo entre pestañas:', err);
+        if (!paginaCerrada && !obtenerBusquedaActiva()) iniciarBusquedaCadete(idPedido);
+      });
+    }
+
+    function aplicarCambioPedido(fila) {
+      if (!fila || !pedidoActivo) return;
+      if (fila.id_pedido != null && !esPedidoEnPantalla(fila.id_pedido)) return;
+
+      const etapaNueva = ETAPA_ESTADO[fila.estado_pedido];
+      const etapaActual = ETAPA_ESTADO[pedidoActivo.estado_pedido];
+      if (etapaNueva !== undefined && etapaActual !== undefined && etapaNueva < etapaActual) return;
+
+      pedidoActivo = { ...pedidoActivo, ...fila };
+      renderPedido();
+    }
+
+    function renderPedido() {
+      if (!pedidoActivo) return;
+      const { estado_pedido: estado, id_cadete: idCadete } = pedidoActivo;
+
+      actualizarUIEstado(estado, idCadete);
+      if (idCadete && ESTADOS_CON_CADETE.includes(estado)) {
+        cargarDatosCadeteAsignado(idCadete);
+      }
+    }
+
+    function actualizarUIEstado(estado, idCadete = null) {
+      const enBusqueda = ESTADOS_BUSQUEDA.includes(estado);
+      const finalizado = ESTADOS_FINALES.includes(estado);
+      const conCadete = Boolean(idCadete) && ESTADOS_CON_CADETE.includes(estado);
+
+      let vista;
+      if (estado === 'cancelado') {
+        vista = {
+          icono: '❌', clases: 'bg-red-500/15', titulo: 'Pedido cancelado',
+          detalle: obtenerMotivoCancelacion(pedidoActivo.id_pedido) || 'Podés volver a pedir el envío cuando quieras'
+        };
+      } else if (estado === 'entregado' || estado === 'rendido') {
+        vista = {
+          icono: '✅', clases: 'bg-emerald-500/15', titulo: '¡Pedido entregado!',
+          detalle: pedidoActivo.tiempo_pedido ? `Viaje de ${pedidoActivo.tiempo_pedido} min · ¡Gracias por usar Todo Delivery!` : '¡Gracias por usar Todo Delivery!'
+        };
+      } else if (enBusqueda || !idCadete) {
+        // Detalle del motor de asignación (a quién se le está ofreciendo, cuánto falta, etc.)
+        const ui = obtenerEstadoBusqueda(pedidoActivo.id_pedido);
+        vista = {
+          icono: '🔍', clases: 'bg-brand-warning/15 radar', titulo: ui?.titulo || 'Buscando cadete',
+          detalle: ui?.detalle || 'Estamos ofreciendo tu pedido a los cadetes disponibles'
+        };
+      } else if (estado === 'asignado') {
+        vista = { icono: '🛵', clases: 'bg-blue-500/15', titulo: 'Tu cadete va a retirar el pedido', detalle: 'Te avisamos cuando salga hacia la entrega' };
+      } else if (estado === 'en_camino_entrega') {
+        vista = { icono: '📦', clases: 'bg-brand-accent/15', titulo: 'Tu pedido va en camino', detalle: 'Seguí al cadete en el mapa' };
+      } else {
+        vista = { icono: '📦', clases: 'bg-brand-surfaceLight', titulo: estado, detalle: '' };
+      }
+
+      const iconoEl = $('iconoEstado');
+      iconoEl.className = `relative w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${vista.clases}`;
+      iconoEl.textContent = vista.icono;
+      if ($('tituloEstado').textContent !== vista.titulo) $('tituloEstado').textContent = vista.titulo;
+      $('detalleEstado').textContent = vista.detalle;
+
+      renderPasos(estado);
+      $('avisoBusqueda').classList.toggle('hidden', !(enBusqueda && obtenerBusquedaActiva()));
+      $('btnCancelarPedido').classList.toggle('hidden', !enBusqueda);
+      $('accionesFinales').classList.toggle('hidden', !finalizado);
+      $('tarjetaCadete').classList.toggle('hidden', !conCadete);
+      $('tarjetaChat').classList.toggle('hidden', !(ESTADOS_CHAT.includes(estado) && idCadete));
+      marcarSeguimientoActivo(!finalizado);
+
+      if (conCadete && idCadeteCargado !== Number(idCadete)) {
+        $('cadeteAvatarInitials').textContent = '🛵';
+        $('cadeteNombreText').textContent = 'Cargando datos del cadete...';
+        $('cadeteVehiculo').textContent = '';
+        setGpsStatus('Esperando señal GPS');
+      }
+      if (finalizado) detenerRelojGps();
+
+      avisarTransicion(estado);
+    }
+
+    function renderPasos(estado) {
+      const ol = $('pasosPedido');
+      const cancelado = estado === 'cancelado';
+      ol.classList.toggle('hidden', cancelado);
+      if (cancelado) return;
+
+      const actual = Math.min(ETAPA_ESTADO[estado] ?? 0, 3);
+      const entregado = actual === 3;
+      ol.innerHTML = PASOS.map((texto, i) => {
+        const hecho = i < actual || (entregado && i === actual);
+        const enCurso = i === actual && !entregado;
+        const barra = hecho ? 'bg-brand-accent' : enCurso ? 'bg-brand-accent/60 animate-pulse' : 'bg-brand-border';
+        return `
+          <li class="min-w-0" ${enCurso ? 'aria-current="step"' : ''}>
+            <span class="block h-1.5 rounded-full ${barra}"></span>
+            <span class="mt-1.5 block text-xs font-bold truncate ${hecho || enCurso ? 'text-white' : 'text-brand-textMuted'}">${texto}</span>
+          </li>`;
+      }).join('');
+    }
+
+    // Aviso cuando el pedido avanza mientras la pantalla está abierta (no al cargarla)
+    function avisarTransicion(estado) {
+      const anterior = estadoMostrado;
+      estadoMostrado = estado;
+      if (anterior === null || ETAPA_ESTADO[anterior] === ETAPA_ESTADO[estado]) return;
+
+      if (estado === 'asignado') {
+        mostrarToast('¡Un cadete aceptó tu pedido!', { tipo: 'exito', icono: '🛵' });
+        navigator.vibrate?.(200);
+      } else if (estado === 'en_camino_entrega') {
+        mostrarToast('Tu pedido va en camino', { tipo: 'exito', icono: '📦' });
+      } else if (estado === 'entregado' || estado === 'rendido') {
+        mostrarToast('¡Pedido entregado!', { tipo: 'exito', icono: '✅' });
+      } else if (estado === 'cancelado') {
+        mostrarToast(obtenerMotivoCancelacion(pedidoActivo.id_pedido) || 'El pedido se canceló', { tipo: 'error', icono: '❌' });
+      }
+    }
+
+    async function handleCancelarPedido() {
+      if (!pedidoActivo) return;
+      const idPedido = pedidoActivo.id_pedido;
+
+      const confirmado = await confirmar({
+        titulo: '¿Cancelar el pedido?',
+        mensaje: 'Dejamos de buscar cadete y el pedido queda cancelado.',
+        textoConfirmar: 'Sí, cancelar pedido',
+        textoCancelar: 'No, seguir buscando',
+        peligro: true
+      });
+      if (!confirmado || !esPedidoEnPantalla(idPedido)) return;
+
+      const btn = $('btnCancelarPedido');
+      btn.disabled = true;
+      btn.textContent = 'Cancelando...';
+
+      try {
+        const cancelado = await cancelarBusquedaPorCliente(idPedido);
+        if (!cancelado) {
+          mostrarToast('El pedido ya no se puede cancelar: cambió de estado mientras tanto.', { tipo: 'aviso' });
+        }
+        const actualizado = await leerPedido(idPedido);
+        if (actualizado) aplicarCambioPedido(actualizado);
+      } catch (err) {
+        console.error('Error al cancelar el pedido:', err);
+        mostrarToast('No pudimos cancelar el pedido. Probá de nuevo.', { tipo: 'error' });
+        // La búsqueda local se detuvo antes de escribir: si el pedido sigue buscando, retomarla
+        if (ESTADOS_BUSQUEDA.includes(pedidoActivo.estado_pedido) && !obtenerBusquedaActiva()) {
+          arrancarMotorAsignacion(idPedido);
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Cancelar pedido';
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // CADETE
+    // -------------------------------------------------------------------------
+    async function cargarDatosCadeteAsignado(idCadete) {
+      const id = Number(idCadete);
+      if (idCadeteCargado === id) return;
+      idCadeteCargado = id; // evita consultas duplicadas; si falla se libera para reintentar
+
+      try {
+        const { data: cadete, error } = await supabase
+          .from('Cadetes')
+          .select('id_cad, nombre_cad, alias_cad, telef_cad, vehiculo_cad, patente')
+          .eq('id_cad', id)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!cadete) {
+          idCadeteCargado = null;
+          return;
+        }
+        if (!pedidoActivo || Number(pedidoActivo.id_cadete) !== id) return;
+
+        nombreCadete = cadete.nombre_cad || cadete.alias_cad || `Cadete #${cadete.id_cad}`;
+        $('cadeteAvatarInitials').textContent = iniciales(nombreCadete);
+        $('cadeteNombreText').textContent = nombreCadete;
+        $('cadeteVehiculo').textContent = cadete.vehiculo_cad || 'Vehículo sin cargar';
+        actualizarInsigniaPatente(cadete.patente);
+        configurarBotonLlamar(cadete.telef_cad);
+        if (!ultimaSenalGps) setGpsStatus('Esperando señal GPS');
+      } catch (e) {
+        idCadeteCargado = null;
+        console.warn('No se pudo cargar datos del cadete:', e);
+      }
+    }
+
+    function configurarBotonLlamar(telefono) {
+      const tel = String(telefono || '').replace(/[^\d+]/g, '');
+      const btn = $('btnLlamarCadete');
+      btn.classList.toggle('hidden', !tel);
+      $('btnIrAlChat').classList.toggle('col-span-2', !tel);
+      if (tel) {
+        btn.href = `tel:${tel}`;
+        btn.setAttribute('aria-label', `Llamar a ${nombreCadete}`);
+      }
+    }
+
+    function actualizarInsigniaPatente(patente) {
+      const badge = $('cadetePatenteBadge');
+      const valor = patente ? String(patente).trim().toUpperCase() : '';
+
+      $('cadetePatenteText').textContent = valor || 'SIN PATENTE';
+      badge.className = valor
+        ? 'flex flex-col items-center justify-center px-2.5 py-1 bg-black border-2 border-white/80 rounded-lg shadow-md shrink-0'
+        : 'flex flex-col items-center justify-center px-2 py-0.5 bg-brand-surfaceLight/50 border border-brand-border/80 rounded-lg shrink-0';
+    }
+
+    // Datos del cadete que llegan por broadcast: solo aplican si el pedido ya tiene cadete
+    function tieneCadeteAsignado() {
+      return Boolean(pedidoActivo?.id_cadete && ESTADOS_CON_CADETE.includes(pedidoActivo.estado_pedido));
+    }
+
+    function setGpsStatus(texto, enVivo = false) {
+      const el = $('cadeteGpsStatus');
+      el.textContent = '';
+      const punto = document.createElement('span');
+      punto.className = `w-2 h-2 rounded-full shrink-0 ${enVivo ? 'bg-brand-accent animate-pulse' : 'bg-brand-textMuted/60'}`;
+      const textoEl = document.createElement('span');
+      textoEl.className = 'truncate';
+      textoEl.textContent = texto;
+      el.append(punto, textoEl);
+    }
+
+    function registrarSenalGps() {
+      ultimaSenalGps = Date.now();
+      renderRelojGps();
+      if (!relojGps) relojGps = setInterval(renderRelojGps, 1000);
+    }
+
+    function renderRelojGps() {
+      const segundos = Math.round((Date.now() - ultimaSenalGps) / 1000);
+      const enVivo = segundos < 30;
+      const hace = segundos < 5 ? 'ahora' : segundos < 60 ? `hace ${segundos} s` : `hace ${Math.floor(segundos / 60)} min`;
+      setGpsStatus(`${enVivo ? 'GPS en vivo' : 'Última señal'} · ${hace}`, enVivo);
+      if (!enVivo) $('telemetriaVelocidad').textContent = '';
+    }
+
+    function detenerRelojGps() {
+      clearInterval(relojGps);
+      relojGps = null;
+    }
+
+    // -------------------------------------------------------------------------
+    // MAPA DE SEGUIMIENTO
+    // -------------------------------------------------------------------------
+    function inicializarMapaSeguimiento(pedido) {
+      const org = coordenadas(pedido.latitud_org, pedido.longitud_org);
+      const dest = coordenadas(pedido.latitud_dest, pedido.longitud_dest);
+
+      if (typeof L === 'undefined' || !org || !dest) {
+        $('contenedorMapaSeguimiento').classList.add('hidden');
+        return;
+      }
+
+      mapaSeguimiento = L.map('mapaSeguimiento', { zoomControl: false });
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OSM'
+      }).addTo(mapaSeguimiento);
+
+      L.marker(org, { icon: crearIconoMapa('A', 'bg-emerald-500 shadow-emerald-500/40'), interactive: false }).addTo(mapaSeguimiento);
+      L.marker(dest, { icon: crearIconoMapa('B', 'bg-amber-400 shadow-amber-400/40'), interactive: false }).addTo(mapaSeguimiento);
+      L.polyline([org, dest], { color: '#00E58F', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(mapaSeguimiento);
+
+      puntosRuta = [org, dest];
+      encuadrarMapa();
+    }
+
+    function encuadrarMapa() {
+      if (!mapaSeguimiento) return;
+      const puntos = markerCadete ? [...puntosRuta, markerCadete.getLatLng()] : puntosRuta;
+      mapaSeguimiento.fitBounds(L.latLngBounds(puntos), { padding: [40, 40], maxZoom: 16 });
+    }
+
+    function moverMarcadorCadete(lat, lng) {
+      if (!mapaSeguimiento) return;
+
+      if (markerCadete) {
+        markerCadete.setLatLng([lat, lng]);
+        return;
+      }
+
+      markerCadete = L.marker([lat, lng], {
+        icon: crearIconoMapa('🛵', 'bg-brand-info shadow-blue-500/40', 40),
+        interactive: false,
+        zIndexOffset: 1000
+      }).addTo(mapaSeguimiento);
+      encuadrarMapa();
+    }
+
+    function crearIconoMapa(contenido, clasesColor, tamano = 34) {
+      return L.divIcon({
+        className: '',
+        html: `<div style="width:${tamano}px;height:${tamano}px" class="rounded-full ${clasesColor} border-2 border-white flex items-center justify-center text-black font-black text-sm shadow-lg">${contenido}</div>`,
+        iconSize: [tamano, tamano],
+        iconAnchor: [tamano / 2, tamano / 2]
+      });
+    }
+
+    function coordenadas(lat, lng) {
+      if (lat == null || lng == null) return null;
+      const la = Number(lat);
+      const ln = Number(lng);
+      return Number.isFinite(la) && Number.isFinite(ln) ? [la, ln] : null;
+    }
+
+    // -------------------------------------------------------------------------
+    // REALTIME: CANAL pedido-en-curso-{id}
+    // -------------------------------------------------------------------------
+    function conectarCanalPrivadoPedido(idPedido) {
+      const topic = `pedido-en-curso-${idPedido}`;
+      // Ya conectado a este mismo pedido: reutilizar (volver a crearlo falla porque el canal sigue registrado)
+      if (channelPedidoPrivado && channelPedidoPrivado.topic === `realtime:${topic}`) return;
+      if (channelPedidoPrivado) supabase.removeChannel(channelPedidoPrivado);
+
+      renderEstadoCanal('CONNECTING');
+      channelPedidoPrivado = supabase.channel(topic, { config: { broadcast: { ack: true } } });
+
+      channelPedidoPrivado
+        // A) Ubicación GPS en vivo del cadete y su patente
+        .on('broadcast', { event: 'ubicacion_cadete' }, ({ payload }) => {
+          if (!tieneCadeteAsignado()) return;
+          if (payload?.coords) {
+            const lat = Number(payload.coords.lat);
+            const lng = Number(payload.coords.lng);
+            const speed = Number(payload.coords.speed) || 0;
+            if (Number.isFinite(lat) && Number.isFinite(lng)) moverMarcadorCadete(lat, lng);
+            $('telemetriaVelocidad').textContent = speed ? `${Math.round(speed * 3.6)} km/h` : '';
+            registrarSenalGps();
+          }
+          if (payload?.patente) actualizarInsigniaPatente(payload.patente);
+          if (payload?.vehiculo && !$('cadeteVehiculo').textContent) $('cadeteVehiculo').textContent = payload.vehiculo;
+        })
+        // B) Presentación del cadete
+        .on('broadcast', { event: 'cadete_conectado' }, ({ payload }) => {
+          if (!tieneCadeteAsignado()) return;
+          if (payload?.patente) actualizarInsigniaPatente(payload.patente);
+          if (payload?.vehiculo) $('cadeteVehiculo').textContent = payload.vehiculo;
+        })
+        // C) Mensajes de chat
+        .on('broadcast', { event: 'mensaje_chat' }, ({ payload }) => {
+          if (payload?.remitente !== 'cadete') return;
+          appendChatBubble(payload.texto, false, payload.hora);
+          if (!chatVisible) {
+            noLeidos++;
+            renderNoLeidos();
+            const texto = String(payload.texto ?? '');
+            mostrarToast(`${nombreCadete}: ${texto.length > 80 ? `${texto.slice(0, 80)}…` : texto}`, { icono: '💬', alTocar: irAlChat });
+          }
+        })
+        // D) Cambios de estado avisados por el cadete (ej: aceptó)
+        .on('broadcast', { event: 'cambio_estado_pedido' }, ({ payload }) => {
+          if (!payload?.estado_pedido) return;
+          aplicarCambioPedido({
+            id_pedido: idPedido,
+            estado_pedido: payload.estado_pedido,
+            ...(payload.id_cadete != null ? { id_cadete: payload.id_cadete } : {})
+          });
+          if (payload.patente && tieneCadeteAsignado()) actualizarInsigniaPatente(payload.patente);
+          solicitarRevisionDePedido(idPedido);
+        })
+        // E) Rechazo del cadete: se registra y el motor decide con datos frescos de BD
+        .on('broadcast', { event: 'pedido_rechazado' }, ({ payload }) => {
+          if (payload?.id_cadete_rechazo == null) return;
+          registrarRechazoCadete(idPedido, payload.id_cadete_rechazo);
+        })
+        // F) Cambios directos en BD
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'Pedidos',
+            filter: `id_pedido=eq.${idPedido}`
+          },
+          (payload) => {
+            if (!payload.new) return;
+            aplicarCambioPedido(payload.new);
+            // Cualquier cambio (rechazo, aceptación, cancelación) se evalúa en el motor releyendo la BD
+            solicitarRevisionDePedido(idPedido);
+          }
+        )
+        .subscribe((status) => renderEstadoCanal(status));
+    }
+
+    function renderEstadoCanal(status) {
+      if (paginaCerrada) return;
+      const chip = $('chipCanal');
+      const base = 'text-xs font-semibold px-2 py-0.5 rounded-full';
+
+      if (status === 'SUBSCRIBED') {
+        chip.className = `${base} text-brand-accent bg-brand-accent/10`;
+        chip.textContent = '● En línea';
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        chip.className = `${base} text-brand-danger bg-brand-danger/10`;
+        chip.textContent = 'Sin conexión';
+      } else {
+        chip.className = `${base} text-brand-textMuted bg-brand-surfaceLight`;
+        chip.textContent = 'Conectando...';
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // CHAT
+    // -------------------------------------------------------------------------
+    async function enviarMensajeChat(texto) {
+      if (!texto || !channelPedidoPrivado || !pedidoActivo || !tieneCadeteAsignado()) return;
+
+      const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); // 'HH:MM'
+      const etiquetaHora = appendChatBubble(texto, true, hora);
+
+      try {
+        const resultado = await channelPedidoPrivado.send({
+          type: 'broadcast',
+          event: 'mensaje_chat',
+          payload: {
+            id_pedido: pedidoActivo.id_pedido,
+            id_emisor: clienteActual.id_cliente,
+            id_receptor: pedidoActivo.id_cadete,
+            remitente: 'cliente',
+            texto,
+            hora,
+            timestamp: new Date().toISOString()
+          }
+        });
+        if (resultado !== 'ok') throw new Error(`envío ${resultado}`);
+      } catch (err) {
+        console.warn('[Chat] No se pudo enviar el mensaje:', err);
+        etiquetaHora.textContent = `${hora} · No enviado`;
+        etiquetaHora.classList.add('text-brand-danger');
+      }
+    }
+
+    // El texto se inserta como texto plano: nunca como HTML
+    function appendChatBubble(texto, esMio, hora) {
+      const container = $('clienteChatMessages');
+      $('chatPlaceholder')?.remove();
+
+      const fila = document.createElement('div');
+      fila.className = esMio ? 'flex flex-col items-end' : 'flex flex-col items-start';
+
+      const burbuja = document.createElement('div');
+      burbuja.className = `max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm break-words whitespace-pre-wrap ${esMio
+        ? 'bg-brand-accent text-brand-bg font-semibold rounded-br-md'
+        : 'bg-brand-surfaceLight border border-brand-border text-white rounded-bl-md'
+        }`;
+      burbuja.textContent = String(texto ?? '');
+
+      const etiquetaHora = document.createElement('span');
+      etiquetaHora.className = 'mt-1 px-1 text-xs text-brand-textMuted';
+      etiquetaHora.textContent = hora || '';
+
+      fila.append(burbuja, etiquetaHora);
+      container.appendChild(fila);
+      container.scrollTop = container.scrollHeight;
+      return etiquetaHora;
+    }
+
+    function irAlChat() {
+      $('tarjetaChat').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => $('clienteChatInput').focus({ preventScroll: true }), 400);
+    }
+
+    function renderNoLeidos() {
+      const badge = $('badgeNoLeidos');
+      badge.textContent = noLeidos > 9 ? '9+' : String(noLeidos);
+      badge.classList.toggle('hidden', noLeidos === 0);
+      badge.classList.toggle('inline-flex', noLeidos > 0);
+    }
+
+    // -------------------------------------------------------------------------
+    // LIMPIEZA
+    // -------------------------------------------------------------------------
+    function liberarRecursos() {
+      paginaCerrada = true;
+      detenerRelojGps();
+      const b = obtenerBusquedaActiva();
+      if (b) detenerBusqueda(b, 'se cerró el seguimiento');
+      if (channelPedidoPrivado) {
+        supabase.removeChannel(channelPedidoPrivado);
+        channelPedidoPrivado = null;
+      }
+    }
+  </script>
+</body>
+
+</html>

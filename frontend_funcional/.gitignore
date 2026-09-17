@@ -1,0 +1,13 @@
+# Dependencias y herramientas locales
+node_modules/
+.netlify/
+
+# Variables locales (la app no las usa hoy, pero no deben subirse si se agregan)
+.env
+.env.*
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json

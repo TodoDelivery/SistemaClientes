@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#090B10" />
+  <title>Todo Delivery - Mi perfil</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="tema_cliente.js"></script>
+  <link rel="stylesheet" href="estilos_cliente.css" />
+</head>
+
+<body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
+
+  <header id="appBar"></header>
+
+  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-3 text-sm font-semibold text-brand-textMuted">
+    <svg class="animate-spin h-6 w-6 text-brand-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+    </svg>
+    Cargando...
+  </div>
+
+  <main id="contenidoPagina" class="hidden mx-auto w-full max-w-xl px-4 pt-5 espacio-nav flex flex-col gap-4">
+
+    <!-- Encabezado del perfil -->
+    <section class="flex items-center gap-4 px-1" aria-label="Perfil">
+      <div id="avatarPerfil"
+        class="w-20 h-20 rounded-full overflow-hidden bg-brand-surface border-2 border-brand-accent/60 text-2xl font-black text-brand-accent flex items-center justify-center shrink-0"></div>
+      <div class="min-w-0">
+        <h2 id="nombrePerfil" class="text-xl font-extrabold truncate"></h2>
+        <p id="emailPerfil" class="text-sm text-brand-textMuted truncate"></p>
+        <p id="clienteDesde" class="text-xs text-brand-textMuted mt-0.5"></p>
+      </div>
+    </section>
+
+    <!-- Mis datos -->
+    <section id="datos" class="scroll-mt-20 bg-brand-surface border border-brand-border rounded-3xl p-4" aria-labelledby="tituloDatos">
+      <h2 id="tituloDatos" class="text-base font-extrabold">Mis datos</h2>
+
+      <p id="avisoTelefono"
+        class="hidden mt-3 px-3 py-2.5 rounded-xl bg-brand-warning/10 border border-brand-warning/30 text-brand-warning text-sm font-semibold">
+        📞 Cargá tu teléfono para que el cadete pueda llamarte si lo necesita.
+      </p>
+
+      <form id="formDatos" novalidate class="mt-4 space-y-4">
+        <div>
+          <label for="inpNombre" class="block text-sm font-bold mb-1.5">Nombre</label>
+          <input id="inpNombre" type="text" maxlength="80" autocomplete="name" aria-describedby="errorNombre"
+            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-white focus:outline-none focus:border-brand-accent aria-[invalid=true]:border-brand-danger" />
+          <p id="errorNombre" class="hidden mt-1.5 text-sm font-semibold text-brand-danger"></p>
+        </div>
+
+        <div>
+          <label for="inpTelefono" class="block text-sm font-bold mb-1.5">Teléfono</label>
+          <input id="inpTelefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="Ej: 2645123456"
+            aria-describedby="ayudaTelefono errorTelefono"
+            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-white font-mono placeholder:text-brand-textMuted/70 focus:outline-none focus:border-brand-accent aria-[invalid=true]:border-brand-danger" />
+          <p id="ayudaTelefono" class="mt-1.5 text-xs text-brand-textMuted">Con característica, sin 0 ni 15.</p>
+          <p id="errorTelefono" class="hidden mt-1 text-sm font-semibold text-brand-danger"></p>
+        </div>
+
+        <div>
+          <p class="text-sm font-bold mb-1.5">Email</p>
+          <p id="labelEmail"
+            class="h-12 px-4 rounded-xl bg-brand-surfaceLight/50 border border-brand-border/60 text-base text-brand-textMuted flex items-center overflow-hidden whitespace-nowrap text-ellipsis"></p>
+          <p class="mt-1.5 text-xs text-brand-textMuted">Viene de tu cuenta de Google y no se puede cambiar acá.</p>
+        </div>
+
+        <button id="btnGuardarDatos" type="submit" disabled
+          class="w-full h-12 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
+          Guardar cambios
+        </button>
+      </form>
+    </section>
+
+    <!-- Ubicaciones favoritas -->
+    <section id="favoritas" class="scroll-mt-20 bg-brand-surface border border-brand-border rounded-3xl p-4" aria-labelledby="tituloFavoritas">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <h2 id="tituloFavoritas" class="text-base font-extrabold">Ubicaciones favoritas</h2>
+          <p class="text-sm text-brand-textMuted">Elegilas rápido al pedir un envío</p>
+        </div>
+        <span id="contadorFavoritas" class="px-2.5 py-1 rounded-full bg-brand-surfaceLight text-xs font-bold text-brand-textMuted shrink-0"></span>
+      </div>
+
+      <div id="listaFavoritas" class="mt-3 divide-y divide-brand-border"></div>
+
+      <button id="btnAgregarFavorita" type="button"
+        class="mt-3 w-full h-12 rounded-xl border border-dashed border-brand-accent/50 text-brand-accent font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+      </button>
+    </section>
+
+    <!-- Cuenta -->
+    <section class="bg-brand-surface border border-brand-border rounded-3xl p-4" aria-labelledby="tituloCuenta">
+      <h2 id="tituloCuenta" class="text-base font-extrabold">Cuenta</h2>
+
+      <div class="mt-3 flex items-center gap-2">
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold text-brand-textMuted">ID de cliente</p>
+          <p id="idCliente" class="font-mono text-xs text-brand-textMuted truncate"></p>
+        </div>
+        <button id="btnCopiarId" type="button" aria-label="Copiar ID de cliente" title="Copiar"
+          class="w-10 h-10 rounded-xl text-brand-textMuted hover:text-white hover:bg-brand-surfaceLight flex items-center justify-center shrink-0"></button>
+      </div>
+
+      <button id="btnCerrarSesion" type="button"
+        class="mt-4 w-full h-12 rounded-xl border border-brand-danger/40 text-brand-danger font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-danger/10 transition-colors disabled:opacity-60">
+      </button>
+    </section>
+  </main>
+
+  <nav id="barraInferior"></nav>
+
+  <script type="module">
+    import {
+      requerirCliente, cerrarSesion, buscarPedidoEnCurso, actualizarDatosCliente, validarTelefono,
+      telefonoPendiente, modificarFavoritas, nuevaFavorita, MAX_FAVORITAS
+    } from './sesion_cliente.js';
+    import {
+      montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar, abrirHoja,
+      hojaDatosFavorita, montarCamposFavorita, pintarAvatar, emojiFavorita, icono
+    } from './ui_cliente.js';
+    import { CENTRO_MAPA, buscarDirecciones, direccionDeCoords } from './direcciones.js';
+
+    let clienteActual = null;
+    let favoritas = [];
+    let datosGuardados = { nombre: '', telefono: '' };
+
+    const $ = (id) => document.getElementById(id);
+
+    iniciar();
+
+    async function iniciar() {
+      try {
+        clienteActual = await requerirCliente();
+        if (!clienteActual) return;
+
+        montarLayoutCliente(clienteActual, 'perfil', 'Mi perfil');
+        favoritas = clienteActual.favoritas;
+
+        renderPerfil();
+        prepararFormularioDatos();
+        renderFavoritas();
+        prepararCuenta();
+
+        $('btnAgregarFavorita').addEventListener('click', abrirAgregarFavorita);
+
+        // Desde el aviso del inicio se llega con #telefono
+        if (location.hash === '#telefono') {
+          $('datos').scrollIntoView({ block: 'start' });
+          $('inpTelefono').focus({ preventScroll: true });
+        }
+
+        buscarPedidoEnCurso(clienteActual.id_cliente)
+          .then(p => marcarSeguimientoActivo(Boolean(p)))
+          .catch(err => console.warn('No se pudo consultar el pedido en curso:', err));
+      } catch (err) {
+        console.error('Error al iniciar Mi perfil:', err);
+        mostrarErrorPagina(err.message || 'Error de conexión con el servidor.');
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // PERFIL Y DATOS
+    // -------------------------------------------------------------------------
+    function renderPerfil() {
+      pintarAvatar($('avatarPerfil'), clienteActual);
+      pintarAvatar($('btnCuenta'), clienteActual);
+      $('nombrePerfil').textContent = clienteActual.nombre_cliente;
+      $('emailPerfil').textContent = clienteActual.email;
+
+      const desde = new Date(clienteActual.cliente_desde);
+      $('clienteDesde').textContent = Number.isNaN(desde.getTime())
+        ? ''
+        : `Cliente desde ${desde.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}`;
+
+      $('avisoTelefono').classList.toggle('hidden', !telefonoPendiente(clienteActual.telefono_cliente));
+    }
+
+    function prepararFormularioDatos() {
+      // Un teléfono de relleno se muestra vacío para que se cargue uno real
+      datosGuardados = {
+        nombre: clienteActual.nombre_cliente || '',
+        telefono: telefonoPendiente(clienteActual.telefono_cliente) ? '' : String(clienteActual.telefono_cliente)
+      };
+      $('inpNombre').value = datosGuardados.nombre;
+      $('inpTelefono').value = datosGuardados.telefono;
+      $('labelEmail').textContent = clienteActual.email || '—';
+
+      const actualizarBoton = () => {
+        const cambio = $('inpNombre').value.trim() !== datosGuardados.nombre
+          || $('inpTelefono').value.replace(/\D/g, '') !== datosGuardados.telefono;
+        $('btnGuardarDatos').disabled = !cambio;
+      };
+      $('inpNombre').addEventListener('input', () => { mostrarErrorCampo('Nombre', ''); actualizarBoton(); });
+      $('inpTelefono').addEventListener('input', () => { mostrarErrorCampo('Telefono', ''); actualizarBoton(); });
+      $('formDatos').addEventListener('submit', guardarDatos);
+    }
+
+    async function guardarDatos(e) {
+      e.preventDefault();
+      const nombre = $('inpNombre').value.trim();
+      const telefono = validarTelefono($('inpTelefono').value);
+
+      let valido = true;
+      if (!nombre) {
+        mostrarErrorCampo('Nombre', 'Ingresá tu nombre');
+        valido = false;
+      }
+      if (!telefono) {
+        mostrarErrorCampo('Telefono', 'Ingresá un teléfono válido (entre 8 y 15 dígitos)');
+        valido = false;
+      }
+      if (!valido) {
+        (!nombre ? $('inpNombre') : $('inpTelefono')).focus();
+        return;
+      }
+
+      const btn = $('btnGuardarDatos');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const fila = await actualizarDatosCliente(clienteActual.id_cliente, { nombre, telefono });
+        clienteActual = { ...clienteActual, nombre_cliente: fila.nombre_cliente, telefono_cliente: fila.telefono_cliente };
+        datosGuardados = { nombre: fila.nombre_cliente, telefono: String(fila.telefono_cliente) };
+        $('inpNombre').value = datosGuardados.nombre;
+        $('inpTelefono').value = datosGuardados.telefono;
+        renderPerfil();
+        mostrarToast('Datos guardados', { tipo: 'exito' });
+        btn.textContent = 'Guardar cambios';
+      } catch (err) {
+        console.error('Error al guardar los datos del cliente:', err);
+        mostrarToast('No pudimos guardar tus datos. Probá de nuevo.', { tipo: 'error' });
+        btn.disabled = false;
+        btn.textContent = 'Guardar cambios';
+      }
+    }
+
+    function mostrarErrorCampo(campo, mensaje) {
+      const error = $(`error${campo}`);
+      error.textContent = mensaje;
+      error.classList.toggle('hidden', !mensaje);
+      $(`inp${campo}`).setAttribute('aria-invalid', String(Boolean(mensaje)));
+    }
+
+    // -------------------------------------------------------------------------
+    // UBICACIONES FAVORITAS
+    // -------------------------------------------------------------------------
+    function renderFavoritas() {
+      const lista = $('listaFavoritas');
+      const llena = favoritas.length >= MAX_FAVORITAS;
+      $('contadorFavoritas').textContent = `${favoritas.length}/${MAX_FAVORITAS}`;
+      $('btnAgregarFavorita').disabled = llena;
+      $('btnAgregarFavorita').innerHTML = llena
+        ? 'Llegaste al máximo de favoritas'
+        : `${icono('mas', 'w-5 h-5')}<span>Agregar ubicación</span>`;
+
+      if (favoritas.length === 0) {
+        lista.innerHTML = `
+          <div class="py-6 text-center">
+            <span class="text-3xl" aria-hidden="true">⭐</span>
+            <p class="mt-2 text-sm font-bold">Todavía no guardaste ubicaciones</p>
+            <p class="mt-1 text-sm text-brand-textMuted">Agregá tu casa o tu trabajo, o guardalas con la ⭐ al pedir un envío.</p>
+          </div>`;
+        return;
+      }
+
+      lista.textContent = '';
+      for (const favorita of favoritas) {
+        const fila = document.createElement('div');
+        fila.className = 'flex items-center gap-3 py-3';
+        fila.innerHTML = `
+          <span data-emoji class="w-11 h-11 rounded-2xl bg-brand-surfaceLight flex items-center justify-center text-xl shrink-0" aria-hidden="true"></span>
+          <div class="min-w-0 flex-1">
+            <p data-nombre class="text-sm font-bold truncate"></p>
+            <p data-direccion class="text-xs text-brand-textMuted truncate"></p>
+          </div>
+          <button type="button" data-editar class="w-10 h-10 rounded-xl text-brand-textMuted hover:text-white hover:bg-brand-surfaceLight flex items-center justify-center shrink-0">
+            ${icono('editar', 'w-5 h-5')}
+          </button>
+          <button type="button" data-borrar class="w-10 h-10 rounded-xl text-brand-danger/80 hover:text-brand-danger hover:bg-brand-danger/10 flex items-center justify-center shrink-0">
+            ${icono('borrar', 'w-5 h-5')}
+          </button>
+        `;
+        fila.querySelector('[data-emoji]').textContent = emojiFavorita(favorita.tipo);
+        fila.querySelector('[data-nombre]').textContent = favorita.nombre;
+        fila.querySelector('[data-direccion]').textContent = textoDireccion(favorita);
+
+        const btnEditar = fila.querySelector('[data-editar]');
+        btnEditar.setAttribute('aria-label', `Editar ${favorita.nombre}`);
+        btnEditar.addEventListener('click', () => editarFavorita(favorita));
+
+        const btnBorrar = fila.querySelector('[data-borrar]');
+        btnBorrar.setAttribute('aria-label', `Eliminar ${favorita.nombre}`);
+        btnBorrar.addEventListener('click', () => borrarFavorita(favorita));
+
+        lista.append(fila);
+      }
+    }
+
+    function textoDireccion(favorita) {
+      return [favorita.direccion, favorita.zona].filter(Boolean).join(', ')
+        || `${favorita.lat.toFixed(4)}, ${favorita.lng.toFixed(4)}`;
+    }
+
+    async function editarFavorita(favorita) {
+      const guardado = await hojaDatosFavorita({
+        titulo: 'Editar ubicación',
+        detalle: textoDireccion(favorita),
+        tipo: favorita.tipo,
+        nombre: favorita.nombre,
+        alGuardar: async ({ tipo, nombre }) => {
+          favoritas = await modificarFavoritas(clienteActual.id_cliente, (lista) =>
+            lista.map(f => (f.id === favorita.id ? { ...f, tipo, nombre } : f)));
+        }
+      });
+      if (guardado) {
+        renderFavoritas();
+        mostrarToast('Ubicación actualizada', { tipo: 'exito' });
+      }
+    }
+
+    async function borrarFavorita(favorita) {
+      const confirmado = await confirmar({
+        titulo: `¿Eliminar "${favorita.nombre}"?`,
+        mensaje: textoDireccion(favorita),
+        textoConfirmar: 'Eliminar',
+        textoCancelar: 'Volver',
+        peligro: true
+      });
+      if (!confirmado) return;
+
+      try {
+        favoritas = await modificarFavoritas(clienteActual.id_cliente, (lista) => lista.filter(f => f.id !== favorita.id));
+        renderFavoritas();
+        mostrarToast('Ubicación eliminada', { tipo: 'info', icono: '🗑️' });
+      } catch (err) {
+        console.error('Error al eliminar la favorita:', err);
+        mostrarToast('No pudimos eliminar la ubicación. Probá de nuevo.', { tipo: 'error' });
+      }
+    }
+
+    async function abrirAgregarFavorita() {
+      if (favoritas.length >= MAX_FAVORITAS) return;
+      if (typeof L === 'undefined') {
+        mostrarToast('No se pudo cargar el mapa. Revisá tu conexión.', { tipo: 'error' });
+        return;
+      }
+
+      // Sugerir el tipo que todavía no está cargado
+      const tipoSugerido = ['casa', 'trabajo'].find(t => !favoritas.some(f => f.tipo === t)) || 'otro';
+      let mapa = null;
+
+      const guardada = await abrirHoja((contenido, cerrar) => {
+        contenido.innerHTML = `
+          <h2 id="tituloHoja" class="text-lg font-extrabold">Nueva ubicación favorita</h2>
+          <div data-campos class="mt-4"></div>
+
+          <p class="mt-4 text-sm font-bold mb-1.5">Ubicación</p>
+          <div class="relative isolate h-60 rounded-2xl overflow-hidden border border-brand-border bg-brand-bg">
+            <div data-mapa class="absolute inset-0"></div>
+            <div data-zona-busqueda class="absolute top-2 inset-x-2 z-[500]">
+              <div role="search" class="flex items-center gap-2 h-11 pl-3 pr-1 rounded-xl bg-brand-surface/95 backdrop-blur border border-brand-border shadow-xl focus-within:border-brand-accent">
+                <label for="inpBuscarFavorita" class="sr-only">Buscar dirección</label>
+                <input id="inpBuscarFavorita" type="search" enterkeyhint="search" autocomplete="off" placeholder="Buscar dirección"
+                  class="flex-1 min-w-0 h-full bg-transparent text-base text-white placeholder:text-brand-textMuted focus:outline-none" />
+                <button type="button" data-buscar class="h-9 px-3 rounded-lg bg-brand-accent text-brand-bg text-sm font-extrabold shrink-0 disabled:opacity-60">Buscar</button>
+              </div>
+              <ul data-resultados class="hidden mt-1.5 max-h-40 overflow-y-auto rounded-xl bg-brand-surface border border-brand-border shadow-2xl divide-y divide-brand-border"></ul>
+            </div>
+            <button type="button" data-gps aria-label="Usar mi ubicación actual" title="Usar mi ubicación"
+              class="absolute bottom-2 right-2 z-[500] w-11 h-11 rounded-full bg-brand-surface/95 border border-brand-border text-brand-accent flex items-center justify-center shadow-xl disabled:opacity-60">
+              ${icono('gps', 'w-5 h-5')}
+            </button>
+          </div>
+          <p data-direccion class="mt-2 text-sm text-brand-textMuted">Tocá el mapa, buscá la dirección o usá tu ubicación.</p>
+
+          <p data-error role="alert" class="hidden mt-3 text-sm font-semibold text-brand-danger"></p>
+          <div class="mt-5 grid gap-2">
+            <button type="button" data-guardar class="h-12 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm disabled:opacity-60">Guardar ubicación</button>
+            <button type="button" data-cancelar class="h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm">Cancelar</button>
+          </div>
+        `;
+
+        const q = (selector) => contenido.querySelector(selector);
+        const campos = montarCamposFavorita(q('[data-campos]'), { tipo: tipoSugerido });
+        const elDireccion = q('[data-direccion]');
+        const elError = q('[data-error]');
+        const btnGuardar = q('[data-guardar]');
+        const inputBusqueda = q('#inpBuscarFavorita');
+
+        let punto = null;
+        let direccion = null;
+        let marcador = null;
+        let consultaActual = 0;
+        let resultados = [];
+
+        const mostrarError = (mensaje) => {
+          elError.textContent = mensaje;
+          elError.classList.toggle('hidden', !mensaje);
+        };
+
+        const renderDireccion = () => {
+          if (!punto) return;
+          elDireccion.textContent = direccion
+            ? [direccion.titulo, direccion.zona].filter(Boolean).join(', ')
+            : `Punto en el mapa (${punto.lat.toFixed(4)}, ${punto.lng.toFixed(4)})`;
+          elDireccion.className = 'mt-2 text-sm font-semibold text-white';
+        };
+
+        const fijarPunto = async (latlng, { direccionConocida = null, centrar = false } = {}) => {
+          punto = { lat: Number(latlng.lat), lng: Number(latlng.lng) };
+          mostrarError('');
+          if (marcador) {
+            marcador.setLatLng([punto.lat, punto.lng]);
+          } else {
+            marcador = L.marker([punto.lat, punto.lng], {
+              draggable: true,
+              icon: L.divIcon({
+                className: '',
+                html: '<div class="w-9 h-9 rounded-full bg-brand-accent border-2 border-white flex items-center justify-center text-base shadow-lg">⭐</div>',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
+              })
+            }).addTo(mapa).on('dragend', (e) => fijarPunto(e.target.getLatLng()));
+          }
+          if (centrar) mapa.setView([punto.lat, punto.lng], 17);
+
+          const consulta = ++consultaActual;
+          if (direccionConocida) {
+            direccion = direccionConocida;
+            renderDireccion();
+            return;
+          }
+          direccion = null;
+          elDireccion.textContent = 'Buscando la dirección...';
+          elDireccion.className = 'mt-2 text-sm text-brand-textMuted';
+          try {
+            const encontrada = await direccionDeCoords(punto);
+            if (consulta === consultaActual) direccion = encontrada;
+          } catch (err) {
+            console.warn('[Favoritas] No se pudo obtener la dirección:', err);
+          }
+          if (consulta === consultaActual) renderDireccion();
+        };
+
+        const ocultarResultados = () => q('[data-resultados]').classList.add('hidden');
+
+        const renderResultados = (lista, mensajeVacio) => {
+          const ul = q('[data-resultados]');
+          ul.textContent = '';
+          ul.classList.remove('hidden');
+          if (lista.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'px-3 py-2.5 text-sm text-brand-textMuted';
+            li.textContent = mensajeVacio;
+            ul.append(li);
+            return;
+          }
+          lista.forEach((r) => {
+            const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'w-full text-left px-3 py-2.5 hover:bg-brand-surfaceLight focus:bg-brand-surfaceLight focus:outline-none';
+            const titulo = document.createElement('span');
+            titulo.className = 'block text-sm font-semibold truncate';
+            titulo.textContent = r.direccion.titulo;
+            const zona = document.createElement('span');
+            zona.className = 'block text-xs text-brand-textMuted truncate';
+            zona.textContent = r.direccion.zona;
+            btn.append(titulo, zona);
+            btn.addEventListener('click', () => {
+              ocultarResultados();
+              inputBusqueda.value = '';
+              fijarPunto(r, { direccionConocida: r.direccion, centrar: true });
+            });
+            li.append(btn);
+            ul.append(li);
+          });
+        };
+
+        const buscar = async () => {
+          const texto = inputBusqueda.value.trim();
+          if (texto.length < 3) {
+            renderResultados([], 'Escribí la calle y el número, o el nombre del lugar');
+            return;
+          }
+          const btnBuscar = q('[data-buscar]');
+          btnBuscar.disabled = true;
+          renderResultados([], 'Buscando...');
+          try {
+            resultados = await buscarDirecciones(texto, mapa?.getBounds().pad(2));
+            renderResultados(resultados, 'No encontramos esa dirección. Probá con calle y número, o tocá el mapa.');
+          } catch (err) {
+            console.warn('[Favoritas] Error en la búsqueda:', err);
+            renderResultados([], 'No pudimos buscar la dirección. Probá de nuevo o tocá el mapa.');
+          } finally {
+            btnBuscar.disabled = false;
+          }
+        };
+
+        q('[data-buscar]').addEventListener('click', buscar);
+        inputBusqueda.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            buscar();
+          }
+        });
+
+        q('[data-gps]').addEventListener('click', (e) => {
+          if (!('geolocation' in navigator)) {
+            mostrarError('Tu navegador no permite obtener la ubicación');
+            return;
+          }
+          const btnGps = e.currentTarget;
+          btnGps.disabled = true;
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              btnGps.disabled = false;
+              fijarPunto({ lat: pos.coords.latitude, lng: pos.coords.longitude }, { centrar: true });
+            },
+            (err) => {
+              btnGps.disabled = false;
+              mostrarError(err.code === 1
+                ? 'Permití el acceso a tu ubicación en el navegador para usar esta opción'
+                : 'No pudimos obtener tu ubicación. Tocá el mapa para marcarla.');
+            },
+            { enableHighAccuracy: true, timeout: 6000 }
+          );
+        });
+
+        btnGuardar.addEventListener('click', async () => {
+          const { tipo, nombre } = campos.valores();
+          if (!nombre) {
+            mostrarError('Poné un nombre para reconocerla');
+            campos.inputNombre.focus();
+            return;
+          }
+          if (!punto) {
+            mostrarError('Marcá la ubicación en el mapa');
+            return;
+          }
+
+          btnGuardar.disabled = true;
+          btnGuardar.textContent = 'Guardando...';
+          try {
+            const favorita = nuevaFavorita({
+              tipo,
+              nombre,
+              direccion: direccion?.titulo || '',
+              zona: direccion?.zona || '',
+              lat: punto.lat,
+              lng: punto.lng
+            });
+            favoritas = await modificarFavoritas(clienteActual.id_cliente, (lista) => [...lista, favorita]);
+            cerrar(true);
+          } catch (err) {
+            console.error('[Favoritas] No se pudo guardar:', err);
+            mostrarError(err.paraUsuario ? err.message : 'No pudimos guardar la ubicación. Probá de nuevo.');
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = 'Guardar ubicación';
+          }
+        });
+
+        q('[data-cancelar]').addEventListener('click', () => cerrar(false));
+        contenido.addEventListener('click', (e) => {
+          if (!e.target.closest('[data-zona-busqueda]')) ocultarResultados();
+        });
+
+        // La hoja se agrega al documento después de construirla: el mapa se crea en el siguiente ciclo
+        setTimeout(() => {
+          mapa = L.map(q('[data-mapa]'), { zoomControl: false, center: [CENTRO_MAPA.lat, CENTRO_MAPA.lng], zoom: 14 });
+          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OSM' }).addTo(mapa);
+          mapa.on('click', (e) => {
+            ocultarResultados();
+            fijarPunto(e.latlng);
+          });
+          setTimeout(() => mapa.invalidateSize(), 300); // tamaño final tras la animación de la hoja
+        }, 0);
+      }, { etiquetadaPor: 'tituloHoja' });
+
+      mapa?.remove();
+      if (guardada) {
+        renderFavoritas();
+        mostrarToast('Ubicación guardada en tus favoritas', { tipo: 'exito', icono: '⭐' });
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // CUENTA
+    // -------------------------------------------------------------------------
+    function prepararCuenta() {
+      $('idCliente').textContent = clienteActual.id_cliente;
+      $('btnCopiarId').innerHTML = icono('copiar', 'w-5 h-5');
+      $('btnCopiarId').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(clienteActual.id_cliente);
+          mostrarToast('ID copiado', { tipo: 'exito' });
+        } catch {
+          mostrarToast('No se pudo copiar el ID', { tipo: 'error' });
+        }
+      });
+
+      const btnSalir = $('btnCerrarSesion');
+      btnSalir.innerHTML = `${icono('salir', 'w-5 h-5')}<span>Cerrar sesión</span>`;
+      btnSalir.addEventListener('click', async () => {
+        btnSalir.disabled = true;
+        btnSalir.querySelector('span').textContent = 'Cerrando sesión...';
+        await cerrarSesion();
+      });
+    }
+  </script>
+</body>
+
+</html>

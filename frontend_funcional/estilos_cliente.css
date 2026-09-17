@@ -1,0 +1,210 @@
+/* =========================================================================
+   ESTILOS COMPARTIDOS DE LA APP CLIENTES
+   ========================================================================= */
+:root {
+  --alto-nav: 64px;
+  color-scheme: dark;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: #090B10;
+  color: #FFFFFF;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+:focus-visible {
+  outline: 2px solid #00E58F;
+  outline-offset: 2px;
+}
+
+/* ---- Zonas seguras (notch / barra de gestos) y barra inferior ---- */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.hoja-pb {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+}
+
+/* Contenido que no queda tapado por la barra inferior */
+.espacio-nav {
+  padding-bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom) + 24px);
+}
+
+/* Contenido que no queda tapado por la barra inferior + la barra de acción fija */
+.espacio-nav-accion {
+  padding-bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom) + 112px);
+}
+
+/* Elemento fijo apoyado sobre la barra inferior */
+.sobre-nav {
+  bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom));
+}
+
+.toasts-top {
+  top: calc(env(safe-area-inset-top) + 64px);
+}
+
+/* ---- Leaflet en modo oscuro ---- */
+.leaflet-container {
+  background: #090B10 !important;
+  font-family: inherit;
+}
+
+.leaflet-tile {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7) !important;
+}
+
+.leaflet-control-zoom {
+  display: none !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.7) !important;
+  color: #555 !important;
+  font-size: 8px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #777 !important;
+}
+
+/* ---- Animaciones ---- */
+@keyframes toastEntrada {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.toast-entrada {
+  animation: toastEntrada 0.2s ease-out;
+}
+
+.toast-salida {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.2s ease-in, transform 0.2s ease-in;
+}
+
+@keyframes hojaEntrada {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes fondoEntrada {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.hoja-panel {
+  animation: hojaEntrada 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.hoja-fondo {
+  animation: fondoEntrada 0.2s ease-out;
+}
+
+/* Radar de "buscando cadete" */
+@keyframes ondaRadar {
+  from {
+    transform: scale(0.7);
+    opacity: 0.6;
+  }
+
+  to {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.radar::before,
+.radar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid #FFB800;
+  animation: ondaRadar 1.8s ease-out infinite;
+}
+
+.radar::after {
+  animation-delay: 0.9s;
+}
+
+@keyframes skeleton {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.skeleton {
+  background: #1A202E;
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- Scroll ---- */
+.sin-scrollbar {
+  scrollbar-width: none;
+}
+
+.sin-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090B10;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1F2636;
+  border-radius: 9999px;
+}

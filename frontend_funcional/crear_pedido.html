@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#090B10" />
+  <title>Todo Delivery - Pedir envío</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="tema_cliente.js"></script>
+  <link rel="stylesheet" href="estilos_cliente.css" />
+</head>
+
+<body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
+
+  <header id="appBar"></header>
+
+  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-3 text-sm font-semibold text-brand-textMuted">
+    <svg class="animate-spin h-6 w-6 text-brand-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+    </svg>
+    Cargando...
+  </div>
+
+  <main id="contenidoPagina" class="hidden mx-auto w-full max-w-xl px-4 pt-4 espacio-nav-accion flex flex-col gap-4">
+
+    <!-- Pedido en curso -->
+    <a id="avisoPedidoEnCurso" href="#"
+      class="hidden flex items-center gap-3 px-4 py-3 rounded-2xl bg-brand-surface border border-brand-accent/40">
+      <span class="text-xl" aria-hidden="true">🛵</span>
+      <span id="textoPedidoEnCurso" class="flex-1 min-w-0 text-sm font-semibold truncate"></span>
+      <span class="text-sm font-bold text-brand-accent">Ver</span>
+    </a>
+
+    <form id="formCrearPedido" novalidate class="space-y-4">
+
+      <!-- 1. RUTA: MAPA + PUNTOS -->
+      <section class="bg-brand-surface border border-brand-border rounded-3xl overflow-hidden" aria-labelledby="tituloRuta">
+        <h2 id="tituloRuta" class="sr-only">Retiro y entrega</h2>
+
+        <div class="relative isolate h-[42dvh] min-h-[260px] max-h-[420px]">
+          <div id="routePickerMap" class="absolute inset-0"></div>
+
+          <!-- Buscador de direcciones -->
+          <div id="zonaBusqueda" class="absolute top-3 inset-x-3 z-[500]">
+            <div role="search"
+              class="flex items-center gap-2 h-12 pl-3.5 pr-1.5 rounded-2xl bg-brand-surface/95 backdrop-blur-xl border border-brand-border shadow-xl focus-within:border-brand-accent">
+              <svg class="w-5 h-5 text-brand-textMuted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              <label for="inpBuscarDireccion" class="sr-only">Buscar dirección</label>
+              <input id="inpBuscarDireccion" type="search" enterkeyhint="search" autocomplete="off"
+                aria-controls="resultadosBusqueda"
+                class="flex-1 min-w-0 h-full bg-transparent text-base text-white placeholder:text-brand-textMuted focus:outline-none" />
+              <button id="btnBuscarDireccion" type="button"
+                class="h-9 px-3.5 rounded-xl bg-brand-accent text-brand-bg text-sm font-extrabold shrink-0 disabled:opacity-60">Buscar</button>
+            </div>
+            <ul id="resultadosBusqueda"
+              class="hidden mt-2 max-h-60 overflow-y-auto rounded-2xl bg-brand-surface border border-brand-border shadow-2xl divide-y divide-brand-border"></ul>
+          </div>
+
+          <p id="pistaMapa"
+            class="absolute bottom-3 left-3 right-3 z-[500] w-fit max-w-full px-3 py-2 rounded-xl bg-black/80 backdrop-blur text-xs font-semibold text-white pointer-events-none">
+          </p>
+        </div>
+
+        <!-- Ubicaciones favoritas -->
+        <div id="filaFavoritas" class="hidden px-4 pt-3">
+          <p id="textoFavoritas" class="text-xs font-bold text-brand-textMuted"></p>
+          <div id="chipsFavoritas" class="mt-2 flex gap-2 overflow-x-auto sin-scrollbar -mx-4 px-4 pb-1"></div>
+        </div>
+
+        <div class="p-2" role="radiogroup" aria-label="Punto que se mueve al tocar el mapa">
+          <div class="flex items-center gap-1" data-fila="origen">
+            <button type="button" role="radio" data-seleccionar="origen"
+              class="flex-1 min-w-0 flex items-center gap-3 p-3 rounded-2xl text-left transition-colors hover:bg-brand-surfaceLight/60">
+              <span class="w-9 h-9 rounded-full bg-emerald-500 text-black font-black text-sm flex items-center justify-center shrink-0" aria-hidden="true">A</span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-xs font-bold text-emerald-400">Retiro</span>
+                <span data-titulo class="block text-sm font-semibold truncate"></span>
+                <span data-zona class="block text-xs text-brand-textMuted truncate"></span>
+              </span>
+            </button>
+            <button type="button" data-favorita="origen"
+              class="hidden w-10 h-12 rounded-xl hover:bg-brand-surfaceLight flex items-center justify-center shrink-0"></button>
+            <button type="button" data-gps="origen" aria-label="Usar mi ubicación como punto de retiro" title="Usar mi ubicación"
+              class="w-10 h-12 rounded-xl text-brand-accent hover:bg-brand-surfaceLight flex items-center justify-center shrink-0 disabled:opacity-50"></button>
+          </div>
+
+          <div class="ml-[29px] flex items-center gap-3 py-0.5" aria-hidden="true">
+            <span class="h-5 border-l-2 border-dashed border-brand-border"></span>
+            <span id="textoDistancia" class="text-xs font-semibold text-brand-textMuted"></span>
+          </div>
+
+          <div class="flex items-center gap-1" data-fila="destino">
+            <button type="button" role="radio" data-seleccionar="destino"
+              class="flex-1 min-w-0 flex items-center gap-3 p-3 rounded-2xl text-left transition-colors hover:bg-brand-surfaceLight/60">
+              <span class="w-9 h-9 rounded-full bg-amber-400 text-black font-black text-sm flex items-center justify-center shrink-0" aria-hidden="true">B</span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-xs font-bold text-amber-400">Entrega</span>
+                <span data-titulo class="block text-sm font-semibold truncate"></span>
+                <span data-zona class="block text-xs text-brand-textMuted truncate"></span>
+              </span>
+            </button>
+            <button type="button" data-favorita="destino"
+              class="hidden w-10 h-12 rounded-xl hover:bg-brand-surfaceLight flex items-center justify-center shrink-0"></button>
+            <button type="button" data-gps="destino" aria-label="Usar mi ubicación como punto de entrega" title="Usar mi ubicación"
+              class="w-10 h-12 rounded-xl text-brand-accent hover:bg-brand-surfaceLight flex items-center justify-center shrink-0 disabled:opacity-50"></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. QUÉ SE ENVÍA -->
+      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-4" aria-labelledby="tituloEnvio">
+        <h2 id="tituloEnvio" class="text-base font-extrabold">¿Qué enviamos?</h2>
+
+        <!-- min-w-0: un fieldset no se achica por debajo de su contenido y rompería el scroll de los chips -->
+        <fieldset class="min-w-0">
+          <legend class="sr-only">Tipo de paquete</legend>
+          <div id="chipsTipoPaquete" class="flex gap-2 overflow-x-auto sin-scrollbar -mx-4 px-4 pb-1"></div>
+        </fieldset>
+
+        <div>
+          <label for="inpInformPedido" class="block text-sm font-bold mb-1.5">Detalle o comercio</label>
+          <input id="inpInformPedido" type="text" maxlength="200" autocomplete="off" enterkeyhint="done"
+            placeholder="Ej: 1 docena de empanadas" aria-describedby="errorInform"
+            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-white placeholder:text-brand-textMuted/70 focus:outline-none focus:border-brand-accent aria-[invalid=true]:border-brand-danger" />
+          <p id="errorInform" class="hidden mt-1.5 text-sm font-semibold text-brand-danger"></p>
+        </div>
+      </section>
+
+      <!-- 3. TARIFA -->
+      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4" aria-labelledby="tituloTarifa">
+        <div class="flex items-center justify-between gap-2">
+          <h2 id="tituloTarifa" class="text-base font-extrabold">Tarifa</h2>
+          <span id="badgeTarifa" class="px-2.5 py-1 rounded-full text-xs font-bold"></span>
+        </div>
+        <dl class="mt-3 space-y-2 text-sm">
+          <div class="flex justify-between gap-3">
+            <dt class="text-brand-textMuted">Bajada de bandera</dt>
+            <dd id="cotizBajadaBandera" class="font-semibold"></dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-brand-textMuted">Distancia <span id="cotizDistKm"></span></dt>
+            <dd id="cotizCostoDistancia" class="font-semibold"></dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-brand-textMuted">Recargo nocturno <span id="cotizPorcNocturno"></span></dt>
+            <dd id="cotizTarifaNocturna" class="font-semibold"></dd>
+          </div>
+          <div class="flex justify-between gap-3 pt-2 border-t border-brand-border">
+            <dt class="font-bold">Total</dt>
+            <dd id="cotizTotal" class="font-black text-brand-accent"></dd>
+          </div>
+        </dl>
+        <p class="mt-3 text-xs text-brand-textMuted">💵 Se paga en efectivo al cadete. La distancia se estima en línea recta.</p>
+        <p id="labelSimulacionNocturna" class="hidden mt-2 text-xs font-mono text-amber-400">DEV: tarifa nocturna simulada</p>
+      </section>
+    </form>
+  </main>
+
+  <!-- Barra de acción fija sobre la navegación -->
+  <div id="barraAccion" class="hidden fixed inset-x-0 sobre-nav z-[1050] px-4 pb-3 pointer-events-none">
+    <div class="pointer-events-auto mx-auto max-w-xl flex items-center gap-3 p-2.5 pl-4 rounded-2xl bg-brand-surface/95 backdrop-blur-xl border border-brand-border shadow-2xl">
+      <div class="min-w-0 flex-1">
+        <p id="accionDetalle" class="text-xs font-semibold text-brand-textMuted truncate"></p>
+        <p id="accionTotal" class="text-xl font-black tracking-tight"></p>
+      </div>
+      <button id="btnCrearPedido" type="submit" form="formCrearPedido"
+        class="h-12 px-5 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm flex items-center gap-2 shadow-lg shadow-brand-accent/20 active:scale-[0.98] transition-transform disabled:opacity-70 shrink-0">
+      </button>
+    </div>
+  </div>
+
+  <nav id="barraInferior"></nav>
+
+  <script type="module">
+    import { supabase } from './conexion_supabase.js';
+    import { ESTADOS_BUSQUEDA, cancelarBusquedaPorCliente } from './script_asignacion.js';
+    import {
+      PAGINAS, requerirCliente, buscarPedidoEnCurso, obtenerFilaCliente, modificarFavoritas, nuevaFavorita, MAX_FAVORITAS
+    } from './sesion_cliente.js';
+    import {
+      montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar, hojaDatosFavorita,
+      estadoUI, formatearPesos, icono, emojiFavorita, TIPOS_PAQUETE
+    } from './ui_cliente.js';
+    import {
+      CENTRO_MAPA, buscarDirecciones, direccionDeCoords, direccionEnCache, recordarDireccion, claveCoords, distanciaMetros
+    } from './direcciones.js';
+
+    // Valores por defecto si Datos_cotiz no responde o no tiene filas
+    const COTIZ_POR_DEFECTO = { bajada_band: 1200, tarifa_km: 1000, porc_tarif_dinamica: 30 };
+    // Solo pruebas: abrir con ?simular_nocturno=1 fuerza la tarifa nocturna
+    const SIMULAR_NOCTURNO = new URLSearchParams(window.location.search).get('simular_nocturno') === '1';
+    // Un punto a menos de esta distancia de una favorita se considera la misma ubicación
+    const RADIO_FAVORITA_M = 40;
+
+    const PUNTOS = {
+      origen: {
+        letra: 'A', nombre: 'retiro', conArticulo: 'el retiro', pregunta: '¿Dónde retiramos?',
+        clasesPin: 'bg-emerald-500 shadow-emerald-500/40', clasesActiva: ['bg-brand-surfaceLight', 'ring-1', 'ring-emerald-500/60']
+      },
+      destino: {
+        letra: 'B', nombre: 'entrega', conArticulo: 'la entrega', pregunta: '¿Dónde entregamos?',
+        clasesPin: 'bg-amber-400 shadow-amber-400/40', clasesActiva: ['bg-brand-surfaceLight', 'ring-1', 'ring-amber-400/60']
+      }
+    };
+
+    let clienteActual = null;
+    let datosCotiz = { ...COTIZ_POR_DEFECTO };
+    let creandoPedido = false;
+
+    let pickerMap = null;
+    let routeLine = null;
+    let modoSeleccion = 'origen'; // punto que se mueve al tocar el mapa
+    const coords = { origen: null, destino: null };
+    const marcadores = { origen: null, destino: null };
+    const direcciones = { origen: null, destino: null }; // { titulo, zona } | 'cargando' | null
+    const temporizadoresDireccion = {};
+    let resultadosBusqueda = [];
+    let favoritas = [];
+
+    const $ = (id) => document.getElementById(id);
+
+    iniciar();
+
+    async function iniciar() {
+      try {
+        clienteActual = await requerirCliente();
+        if (!clienteActual) return;
+
+        const cargaCotiz = cargarDatosCotizacion();
+        montarLayoutCliente(clienteActual, 'solicitar', 'Pedir envío');
+        $('barraAccion').classList.remove('hidden');
+        $('labelSimulacionNocturna').classList.toggle('hidden', !SIMULAR_NOCTURNO);
+        document.querySelectorAll('[data-gps]').forEach(btn => { btn.innerHTML = icono('gps', 'w-6 h-6'); });
+        favoritas = clienteActual.favoritas;
+        renderChipsFavoritas();
+        renderChipsTipoPaquete();
+        setBotonCrear(false);
+
+        inicializarMapaPicker();
+        setModoSeleccion('origen');
+        recalcularCotizacionUI();
+        registrarEventos();
+
+        await cargaCotiz;
+        recalcularCotizacionUI();
+        setInterval(recalcularCotizacionUI, 60000); // entrar o salir de la franja nocturna con la página abierta
+
+        mostrarPedidoEnCurso();
+      } catch (err) {
+        console.error('Error al iniciar Pedir envío:', err);
+        mostrarErrorPagina(err.message || 'Error de conexión con el servidor.');
+      }
+    }
+
+    function registrarEventos() {
+      $('formCrearPedido').addEventListener('submit', handleCrearPedido);
+
+      document.querySelectorAll('[data-seleccionar]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const punto = btn.dataset.seleccionar;
+          setModoSeleccion(punto);
+          if (coords[punto]) pickerMap?.panTo([coords[punto].lat, coords[punto].lng]);
+        });
+      });
+      document.querySelectorAll('[data-gps]').forEach(btn => {
+        btn.addEventListener('click', () => usarMiUbicacion(btn.dataset.gps));
+      });
+      document.querySelectorAll('[data-favorita]').forEach(btn => {
+        btn.addEventListener('click', () => guardarPuntoEnFavoritas(btn.dataset.favorita));
+      });
+
+      const inputBusqueda = $('inpBuscarDireccion');
+      $('btnBuscarDireccion').addEventListener('click', buscarDireccion);
+      inputBusqueda.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault(); // el buscador está dentro del formulario del pedido
+          buscarDireccion();
+        } else if (e.key === 'Escape') {
+          ocultarResultados();
+        }
+      });
+      inputBusqueda.addEventListener('input', () => {
+        if (!inputBusqueda.value.trim()) ocultarResultados();
+      });
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#zonaBusqueda')) ocultarResultados();
+      });
+
+      $('inpInformPedido').addEventListener('input', () => mostrarErrorInform(''));
+    }
+
+    async function mostrarPedidoEnCurso() {
+      try {
+        const pedido = await buscarPedidoEnCurso(clienteActual.id_cliente);
+        marcarSeguimientoActivo(Boolean(pedido));
+        if (!pedido) return;
+
+        const aviso = $('avisoPedidoEnCurso');
+        aviso.href = `${PAGINAS.pedidoActivo}?id_pedido=${encodeURIComponent(pedido.id_pedido)}`;
+        $('textoPedidoEnCurso').textContent = `Pedido #${pedido.id_pedido} · ${estadoUI(pedido).texto}`;
+        aviso.classList.remove('hidden');
+      } catch (err) {
+        console.warn('No se pudo consultar el pedido en curso:', err);
+      }
+    }
+
+    function renderChipsTipoPaquete() {
+      $('chipsTipoPaquete').innerHTML = TIPOS_PAQUETE.map((t, i) => `
+        <label class="relative shrink-0 cursor-pointer">
+          <input type="radio" name="tipoPaquete" value="${t.valor}" class="peer sr-only" ${i === 0 ? 'checked' : ''} />
+          <span class="flex items-center gap-2 h-11 px-4 rounded-full border border-brand-border bg-brand-surfaceLight text-sm font-bold text-brand-textMuted transition-colors peer-checked:bg-brand-accent peer-checked:border-brand-accent peer-checked:text-brand-bg peer-focus-visible:ring-2 peer-focus-visible:ring-brand-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-brand-surface">
+            <span aria-hidden="true">${t.emoji}</span>${t.texto}
+          </span>
+        </label>
+      `).join('');
+    }
+
+    // -------------------------------------------------------------------------
+    // MAPA Y PUNTOS
+    // -------------------------------------------------------------------------
+    function inicializarMapaPicker() {
+      if (typeof L === 'undefined') {
+        console.error('Leaflet no está disponible.');
+        return;
+      }
+
+      pickerMap = L.map('routePickerMap', {
+        center: [CENTRO_MAPA.lat, CENTRO_MAPA.lng],
+        zoom: 14,
+        zoomControl: false
+      });
+
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OSM'
+      }).addTo(pickerMap);
+
+      pickerMap.on('click', (e) => {
+        ocultarResultados();
+        establecerPunto(modoSeleccion, e.latlng, { via: 'mapa' });
+      });
+    }
+
+    /**
+     * @param {'origen'|'destino'} punto
+     * @param {{lat, lng}} latlng
+     * @param {{ via: 'mapa'|'arrastre'|'busqueda'|'gps', direccion?: {titulo, zona} }} opciones
+     */
+    function establecerPunto(punto, latlng, { via, direccion = null }) {
+      const nuevo = { lat: Number(latlng.lat), lng: Number(latlng.lng) };
+      coords[punto] = nuevo;
+
+      if (pickerMap) {
+        if (marcadores[punto]) {
+          marcadores[punto].setLatLng([nuevo.lat, nuevo.lng]);
+        } else {
+          marcadores[punto] = L.marker([nuevo.lat, nuevo.lng], { draggable: true, icon: crearIconoPunto(PUNTOS[punto]) })
+            .addTo(pickerMap)
+            .on('dragend', (e) => establecerPunto(punto, e.target.getLatLng(), { via: 'arrastre' }));
+        }
+      }
+
+      if (direccion) recordarDireccion(nuevo, direccion);
+      resolverDireccion(punto);
+      actualizarRuta();
+      recalcularCotizacionUI();
+
+      // Recorrido guiado: después de ubicar el retiro se pasa a la entrega si todavía no está
+      if (punto === 'origen' && via !== 'arrastre' && !coords.destino) {
+        setModoSeleccion('destino');
+      } else {
+        renderPuntos();
+      }
+
+      if (via === 'busqueda' || via === 'gps') encuadrarMapa(punto);
+    }
+
+    function crearIconoPunto({ letra, clasesPin }) {
+      return L.divIcon({
+        className: '',
+        html: `<div class="w-9 h-9 rounded-full ${clasesPin} border-2 border-white flex items-center justify-center text-black font-black text-sm shadow-lg">${letra}</div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18]
+      });
+    }
+
+    function actualizarRuta() {
+      if (!pickerMap || !coords.origen || !coords.destino) return;
+      const latlngs = [[coords.origen.lat, coords.origen.lng], [coords.destino.lat, coords.destino.lng]];
+      if (routeLine) {
+        routeLine.setLatLngs(latlngs);
+      } else {
+        routeLine = L.polyline(latlngs, { color: '#00E58F', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(pickerMap);
+      }
+    }
+
+    function encuadrarMapa(punto) {
+      if (!pickerMap) return;
+      if (coords.origen && coords.destino) {
+        pickerMap.fitBounds(
+          L.latLngBounds([[coords.origen.lat, coords.origen.lng], [coords.destino.lat, coords.destino.lng]]),
+          { paddingTopLeft: [40, 80], paddingBottomRight: [40, 50], maxZoom: 16 }
+        );
+      } else {
+        pickerMap.setView([coords[punto].lat, coords[punto].lng], 16);
+      }
+    }
+
+    function setModoSeleccion(punto) {
+      modoSeleccion = punto;
+      $('inpBuscarDireccion').placeholder = `Dirección de ${PUNTOS[punto].nombre}`;
+      renderPuntos();
+    }
+
+    function renderPuntos() {
+      for (const punto of ['origen', 'destino']) {
+        const fila = document.querySelector(`[data-fila="${punto}"]`);
+        const boton = fila.querySelector('[data-seleccionar]');
+        const activo = modoSeleccion === punto;
+
+        boton.setAttribute('aria-checked', String(activo));
+        PUNTOS[punto].clasesActiva.forEach(c => boton.classList.toggle(c, activo));
+
+        const { titulo, zona } = textoPunto(punto);
+        const tituloEl = fila.querySelector('[data-titulo]');
+        tituloEl.textContent = titulo;
+        tituloEl.classList.toggle('text-brand-textMuted', !coords[punto]);
+        fila.querySelector('[data-zona]').textContent = zona;
+
+        // Estrella: guardar el punto en favoritas (llena si ya es una)
+        const btnFavorita = fila.querySelector('[data-favorita]');
+        btnFavorita.classList.toggle('hidden', !coords[punto]);
+        if (coords[punto]) {
+          const existente = favoritaCercana(coords[punto]);
+          btnFavorita.innerHTML = icono('estrella', `w-6 h-6 ${existente ? 'text-brand-warning fill-current' : 'text-brand-textMuted'}`);
+          btnFavorita.setAttribute('aria-label', existente
+            ? `Ya está en favoritas como ${existente.nombre}`
+            : `Guardar ${PUNTOS[punto].conArticulo} en favoritas`);
+          btnFavorita.title = existente ? 'En favoritas' : 'Guardar en favoritas';
+        }
+      }
+
+      const { conArticulo } = PUNTOS[modoSeleccion];
+      $('textoFavoritas').textContent = `Usar una favorita para ${conArticulo}`;
+      $('pistaMapa').textContent = coords[modoSeleccion]
+        ? `Tocá el mapa o arrastrá el pin para mover ${conArticulo}`
+        : `Tocá el mapa para ubicar ${conArticulo}`;
+    }
+
+    function textoPunto(punto) {
+      const c = coords[punto];
+      if (!c) return { titulo: PUNTOS[punto].pregunta, zona: 'Tocá el mapa o buscá la dirección' };
+
+      const coordsTexto = `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`;
+      const dir = direcciones[punto];
+      if (dir === 'cargando') return { titulo: 'Buscando la dirección...', zona: coordsTexto };
+      if (dir) return { titulo: dir.titulo, zona: dir.zona || coordsTexto };
+      return { titulo: 'Punto marcado en el mapa', zona: coordsTexto };
+    }
+
+    function usarMiUbicacion(punto) {
+      if (!('geolocation' in navigator)) {
+        mostrarToast('Tu navegador no permite obtener la ubicación', { tipo: 'error' });
+        return;
+      }
+
+      const btn = document.querySelector(`[data-gps="${punto}"]`);
+      btn.disabled = true;
+      btn.classList.add('animate-pulse');
+      const terminar = () => {
+        btn.disabled = false;
+        btn.classList.remove('animate-pulse');
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          terminar();
+          establecerPunto(punto, { lat: pos.coords.latitude, lng: pos.coords.longitude }, { via: 'gps' });
+        },
+        (err) => {
+          terminar();
+          mostrarToast(
+            err.code === 1
+              ? 'Permití el acceso a tu ubicación en el navegador para usar esta opción'
+              : 'No pudimos obtener tu ubicación. Probá de nuevo o tocá el mapa.',
+            { tipo: 'error' }
+          );
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // DIRECCIONES (direcciones.js)
+    // -------------------------------------------------------------------------
+    function resolverDireccion(punto) {
+      const c = coords[punto];
+      const clave = claveCoords(c);
+      clearTimeout(temporizadoresDireccion[punto]);
+
+      const conocida = direccionEnCache(c);
+      if (conocida !== undefined) {
+        direcciones[punto] = conocida;
+        return;
+      }
+
+      direcciones[punto] = 'cargando';
+      // Se espera a que el usuario deje de mover el punto antes de consultar
+      temporizadoresDireccion[punto] = setTimeout(async () => {
+        let direccion = null;
+        try {
+          direccion = await direccionDeCoords(c);
+        } catch (err) {
+          console.warn('[Direcciones] No se pudo obtener la dirección:', err);
+        }
+        if (coords[punto] && claveCoords(coords[punto]) === clave) {
+          direcciones[punto] = direccion;
+          renderPuntos();
+        }
+      }, 600);
+    }
+
+    async function buscarDireccion() {
+      const texto = $('inpBuscarDireccion').value.trim();
+      if (texto.length < 3) {
+        mostrarToast('Escribí la calle y el número, o el nombre del lugar', { tipo: 'aviso' });
+        return;
+      }
+
+      const btn = $('btnBuscarDireccion');
+      btn.disabled = true;
+      renderResultados([], 'Buscando...');
+
+      try {
+        // Prioriza resultados cerca de lo que se ve en el mapa
+        resultadosBusqueda = await buscarDirecciones(texto, pickerMap?.getBounds().pad(2));
+        renderResultados(resultadosBusqueda, 'No encontramos esa dirección. Probá con calle y número, o tocá el mapa.');
+      } catch (err) {
+        console.warn('[Direcciones] Error en la búsqueda:', err);
+        renderResultados([], 'No pudimos buscar la dirección. Probá de nuevo o tocá el mapa.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function renderResultados(lista, mensajeVacio) {
+      const ul = $('resultadosBusqueda');
+      ul.textContent = '';
+      ul.classList.remove('hidden');
+
+      if (lista.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'px-4 py-3 text-sm text-brand-textMuted';
+        li.textContent = mensajeVacio;
+        ul.append(li);
+        return;
+      }
+
+      lista.forEach((r, i) => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'w-full text-left px-4 py-3 hover:bg-brand-surfaceLight focus:bg-brand-surfaceLight focus:outline-none';
+        const titulo = document.createElement('span');
+        titulo.className = 'block text-sm font-semibold truncate';
+        titulo.textContent = r.direccion.titulo;
+        const zona = document.createElement('span');
+        zona.className = 'block text-xs text-brand-textMuted truncate';
+        zona.textContent = r.direccion.zona;
+        btn.append(titulo, zona);
+        btn.addEventListener('click', () => elegirResultado(i));
+        li.append(btn);
+        ul.append(li);
+      });
+    }
+
+    function elegirResultado(indice) {
+      const r = resultadosBusqueda[indice];
+      if (!r) return;
+      ocultarResultados();
+      const input = $('inpBuscarDireccion');
+      input.value = '';
+      input.blur();
+      establecerPunto(modoSeleccion, r, { via: 'busqueda', direccion: r.direccion });
+    }
+
+    function ocultarResultados() {
+      $('resultadosBusqueda').classList.add('hidden');
+    }
+
+    // -------------------------------------------------------------------------
+    // UBICACIONES FAVORITAS
+    // -------------------------------------------------------------------------
+    function favoritaCercana(c) {
+      return favoritas.find(f => distanciaMetros(c, f) <= RADIO_FAVORITA_M) || null;
+    }
+
+    function renderChipsFavoritas() {
+      $('filaFavoritas').classList.toggle('hidden', favoritas.length === 0);
+      const contenedor = $('chipsFavoritas');
+      contenedor.textContent = '';
+
+      for (const favorita of favoritas) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'shrink-0 max-w-[12rem] h-10 px-3.5 rounded-full bg-brand-surfaceLight border border-brand-border text-sm font-bold flex items-center gap-1.5 hover:border-brand-accent/60 active:scale-95 transition';
+        const emoji = document.createElement('span');
+        emoji.setAttribute('aria-hidden', 'true');
+        emoji.textContent = emojiFavorita(favorita.tipo);
+        const nombre = document.createElement('span');
+        nombre.className = 'truncate';
+        nombre.textContent = favorita.nombre;
+        chip.append(emoji, nombre);
+        chip.addEventListener('click', () => usarFavorita(favorita));
+        contenedor.append(chip);
+      }
+    }
+
+    function usarFavorita(favorita) {
+      ocultarResultados();
+      const zona = [favorita.direccion, favorita.zona].filter(Boolean).join(', ');
+      establecerPunto(modoSeleccion, favorita, { via: 'busqueda', direccion: { titulo: favorita.nombre, zona } });
+    }
+
+    async function guardarPuntoEnFavoritas(punto) {
+      const c = coords[punto];
+      if (!c) return;
+
+      const existente = favoritaCercana(c);
+      if (existente) {
+        mostrarToast(`Ya está en tus favoritas como "${existente.nombre}"`, { icono: '⭐' });
+        return;
+      }
+      if (favoritas.length >= MAX_FAVORITAS) {
+        mostrarToast(`Podés guardar hasta ${MAX_FAVORITAS} favoritas. Administralas desde tu perfil.`, { tipo: 'aviso' });
+        return;
+      }
+
+      const direccion = direcciones[punto] && typeof direcciones[punto] === 'object' ? direcciones[punto] : null;
+      const tipo = ['casa', 'trabajo'].find(t => !favoritas.some(f => f.tipo === t)) || 'otro';
+
+      const guardada = await hojaDatosFavorita({
+        titulo: 'Guardar en favoritas',
+        detalle: direccion ? [direccion.titulo, direccion.zona].filter(Boolean).join(', ') : `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`,
+        tipo,
+        alGuardar: async ({ tipo: tipoElegido, nombre }) => {
+          const favorita = nuevaFavorita({
+            tipo: tipoElegido,
+            nombre,
+            direccion: direccion?.titulo || '',
+            zona: direccion?.zona || '',
+            lat: c.lat,
+            lng: c.lng
+          });
+          favoritas = await modificarFavoritas(clienteActual.id_cliente, (lista) => [...lista, favorita]);
+        }
+      });
+
+      if (guardada) {
+        renderChipsFavoritas();
+        renderPuntos();
+        mostrarToast('Guardada en tus favoritas', { tipo: 'exito', icono: '⭐' });
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // COTIZACIÓN (Datos_cotiz + TARIFA NOCTURNA)
+    // -------------------------------------------------------------------------
+    async function cargarDatosCotizacion() {
+      try {
+        const { data, error } = await supabase
+          .from('Datos_cotiz')
+          .select('bajada_band, tarifa_km, porc_tarif_dinamica')
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.warn('[Cotización] Error al leer tabla Datos_cotiz, se usan valores por defecto:', error.message);
+        } else if (data) {
+          datosCotiz = {
+            bajada_band: numeroOPorDefecto(data.bajada_band, COTIZ_POR_DEFECTO.bajada_band),
+            tarifa_km: numeroOPorDefecto(data.tarifa_km, COTIZ_POR_DEFECTO.tarifa_km),
+            porc_tarif_dinamica: numeroOPorDefecto(data.porc_tarif_dinamica, COTIZ_POR_DEFECTO.porc_tarif_dinamica)
+          };
+        }
+      } catch (e) {
+        console.warn('[Cotización] Excepción cargando Datos_cotiz, se usan valores por defecto:', e);
+      }
+    }
+
+    // A diferencia de `Number(x) || def`, respeta un 0 cargado a propósito (ej: sin recargo nocturno)
+    function numeroOPorDefecto(valor, porDefecto) {
+      if (valor === null || valor === undefined || valor === '') return porDefecto;
+      const n = Number(valor);
+      return Number.isFinite(n) ? n : porDefecto;
+    }
+
+    function calcularDistanciaKm(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Radio de la Tierra en km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return Math.max(0.6, Math.round(R * c * 10) / 10); // Mínimo 0.6 km
+    }
+
+    // Tarifa nocturna entre las 00:00 y las 05:59 (hora local)
+    function esHorarioNocturno() {
+      const hora = new Date().getHours();
+      return SIMULAR_NOCTURNO || (hora >= 0 && hora < 6);
+    }
+
+    function porcentajeNocturno() {
+      const p = datosCotiz.porc_tarif_dinamica;
+      return p > 1 ? p : Math.round(p * 100);
+    }
+
+    /** @returns {null | { distKm, bajada, costoKm, esNocturno, recargo, total }} null si falta algún punto */
+    function calcularCotizacion() {
+      if (!coords.origen || !coords.destino) return null;
+
+      const distKm = calcularDistanciaKm(coords.origen.lat, coords.origen.lng, coords.destino.lat, coords.destino.lng);
+      const { bajada_band: bajada, tarifa_km: tarifaKm, porc_tarif_dinamica: porcNocturno } = datosCotiz;
+
+      const costoKm = Math.round(distKm * tarifaKm);
+      const subtotal = bajada + costoKm;
+      const esNocturno = esHorarioNocturno();
+      const factor = porcNocturno > 1 ? porcNocturno / 100 : porcNocturno;
+      const recargo = esNocturno ? Math.round(subtotal * factor) : 0;
+
+      return { distKm, bajada, costoKm, esNocturno, recargo, total: subtotal + recargo };
+    }
+
+    function recalcularCotizacionUI() {
+      const cot = calcularCotizacion();
+      const nocturno = esHorarioNocturno();
+      const porc = porcentajeNocturno();
+
+      const badge = $('badgeTarifa');
+      badge.className = `px-2.5 py-1 rounded-full text-xs font-bold ${nocturno ? 'bg-amber-500/15 text-amber-300' : 'bg-brand-surfaceLight text-brand-textMuted'}`;
+      badge.textContent = nocturno ? `🌙 Nocturna +${porc}%` : 'Tarifa estándar';
+      $('cotizBajadaBandera').textContent = formatearPesos(datosCotiz.bajada_band);
+      $('cotizPorcNocturno').textContent = `(${porc}%)`;
+
+      if (!cot) {
+        $('cotizDistKm').textContent = '';
+        $('cotizCostoDistancia').textContent = '—';
+        $('cotizTarifaNocturna').textContent = '—';
+        $('cotizTotal').textContent = '—';
+        $('textoDistancia').textContent = '';
+        $('accionTotal').textContent = '$ —';
+        $('accionDetalle').textContent = !coords.origen ? 'Falta ubicar el retiro' : 'Falta ubicar la entrega';
+        return;
+      }
+
+      const km = cot.distKm.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      $('cotizDistKm').textContent = `(${km} km)`;
+      $('cotizCostoDistancia').textContent = `+${formatearPesos(cot.costoKm)}`;
+      $('cotizTarifaNocturna').textContent = cot.esNocturno ? `+${formatearPesos(cot.recargo)}` : formatearPesos(0);
+      $('cotizTotal').textContent = formatearPesos(cot.total);
+      $('textoDistancia').textContent = `${km} km aprox.`;
+      $('accionTotal').textContent = formatearPesos(cot.total);
+      $('accionDetalle').textContent = `${cot.esNocturno ? '🌙 Tarifa nocturna' : 'Tarifa estándar'} · ${km} km · Efectivo`;
+    }
+
+    // -------------------------------------------------------------------------
+    // CREACIÓN DEL PEDIDO
+    // -------------------------------------------------------------------------
+    async function handleCrearPedido(e) {
+      e.preventDefault();
+      if (creandoPedido) return;
+
+      if (!coords.origen || !coords.destino) {
+        const falta = !coords.origen ? 'origen' : 'destino';
+        setModoSeleccion(falta);
+        $('routePickerMap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        mostrarToast(`Ubicá ${PUNTOS[falta].conArticulo} en el mapa`, { tipo: 'aviso', icono: falta === 'origen' ? '🟢' : '🟡' });
+        return;
+      }
+
+      const inform = $('inpInformPedido').value.trim();
+      if (!inform) {
+        mostrarErrorInform('Contanos qué hay que llevar o de qué comercio se retira');
+        $('inpInformPedido').focus();
+        return;
+      }
+      const tipo = document.querySelector('input[name="tipoPaquete"]:checked')?.value || TIPOS_PAQUETE[0].valor;
+
+      creandoPedido = true;
+      let redirigiendo = false;
+      setBotonCrear(true, 'Verificando...');
+
+      try {
+        // 1. Validar sesión
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          redirigiendo = true;
+          window.location.replace(PAGINAS.login);
+          return;
+        }
+
+        // 2. ¿Otro pedido sigue buscando cadete? El motor no corre en esta página: se consulta la BD
+        const { data: enBusqueda, error: errBusqueda } = await supabase
+          .from('Pedidos')
+          .select('id_pedido')
+          .eq('id_cliente', clienteActual.id_cliente)
+          .in('estado_pedido', ESTADOS_BUSQUEDA)
+          .order('fecha_pedido', { ascending: false });
+
+        if (errBusqueda) throw errBusqueda;
+
+        if (enBusqueda.length > 0) {
+          const ids = enBusqueda.map(p => `#${p.id_pedido}`).join(', ');
+          const uno = enBusqueda.length === 1;
+          const reemplazar = await confirmar({
+            titulo: uno ? `El pedido ${ids} sigue buscando cadete` : `Los pedidos ${ids} siguen buscando cadete`,
+            mensaje: uno ? 'Si pedís uno nuevo, lo cancelamos.' : 'Si pedís uno nuevo, los cancelamos.',
+            textoConfirmar: 'Cancelar y pedir el nuevo',
+            textoCancelar: 'Volver',
+            peligro: true
+          });
+          if (!reemplazar) return;
+
+          setBotonCrear(true, 'Cancelando...');
+          for (const p of enBusqueda) {
+            const cancelado = await cancelarBusquedaPorCliente(p.id_pedido);
+            if (!cancelado) {
+              mostrarToast(`El pedido #${p.id_pedido} cambió de estado mientras tanto. Revisalo en Mis pedidos antes de pedir otro.`, { tipo: 'aviso', duracionMs: 6000 });
+              return;
+            }
+          }
+        }
+
+        // 3. Asegurar la fila en Clientes
+        const fila = await obtenerFilaCliente(clienteActual.id_cliente);
+        if (!fila) {
+          redirigiendo = true;
+          window.location.replace(PAGINAS.login);
+          return;
+        }
+
+        // 4. Insertar: el pedido nace sin cadete, el motor de asignación lo ofrece de a un cadete por vez
+        setBotonCrear(true, 'Pidiendo...');
+        const { total } = calcularCotizacion();
+        const { data: pedidoInsertado, error } = await supabase
+          .from('Pedidos')
+          .insert({
+            id_cliente: clienteActual.id_cliente,
+            coste_pedido: total,
+            inform_pedido: inform,
+            tipo_paquete: tipo,
+            estado_pedido: 'pendiente',
+            id_cadete: null,
+            latitud_org: coords.origen.lat,
+            longitud_org: coords.origen.lng,
+            latitud_dest: coords.destino.lat,
+            longitud_dest: coords.destino.lng,
+            fecha_pedido: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // 5-6. El seguimiento y el motor de asignación arrancan en pedido_activo.html
+        redirigiendo = true;
+        window.location.href = `${PAGINAS.pedidoActivo}?id_pedido=${encodeURIComponent(pedidoInsertado.id_pedido)}`;
+      } catch (err) {
+        console.error('Error al crear pedido:', err);
+        mostrarToast(`No pudimos crear el pedido: ${err.message || 'error de conexión'}`, { tipo: 'error', duracionMs: 6000 });
+      } finally {
+        if (!redirigiendo) {
+          creandoPedido = false;
+          setBotonCrear(false);
+        }
+      }
+    }
+
+    function mostrarErrorInform(mensaje) {
+      const error = $('errorInform');
+      error.textContent = mensaje;
+      error.classList.toggle('hidden', !mensaje);
+      $('inpInformPedido').setAttribute('aria-invalid', String(Boolean(mensaje)));
+    }
+
+    function setBotonCrear(cargando, texto = '') {
+      const btn = $('btnCrearPedido');
+      btn.disabled = cargando;
+      if (!cargando) {
+        btn.innerHTML = `<span>Pedir cadete</span>${icono('flecha', 'w-5 h-5')}`;
+        return;
+      }
+      btn.innerHTML = `
+        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span></span>
+      `;
+      btn.querySelector('span').textContent = texto;
+    }
+  </script>
+</body>
+
+</html>

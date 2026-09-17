@@ -1,0 +1,13 @@
+{
+  "name": "tododelivery-clientes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App web de clientes de Todo Delivery (sitio estático, sin build)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "npx --yes serve@14.2.4 --listen 5173 --no-clipboard .",
+    "verificar": "node scripts/verificar.mjs"
+  }
+}

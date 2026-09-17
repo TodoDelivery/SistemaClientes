@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#090B10" />
+  <title>Todo Delivery - Ingresar</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="tema_cliente.js"></script>
+  <link rel="stylesheet" href="estilos_cliente.css" />
+</head>
+
+<body class="flex items-center justify-center p-4 pt-safe pb-safe antialiased font-sans selection:bg-brand-accent selection:text-black">
+
+  <!-- Luz ambiental de fondo -->
+  <div
+    class="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-brand-accent/10 rounded-full blur-[100px] pointer-events-none">
+  </div>
+
+  <main class="relative w-full max-w-sm bg-brand-surface border border-brand-border rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+
+    <!-- Identidad -->
+    <div class="text-center space-y-3">
+      <div
+        class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-brand-accent to-brand-accentHover flex items-center justify-center text-brand-bg font-black text-xl shadow-lg shadow-brand-accent/20">
+        TD
+      </div>
+      <div>
+        <h1 class="text-2xl font-black text-white tracking-tight">Todo <span class="text-brand-accent">Delivery</span></h1>
+        <p class="text-xs text-brand-textMuted font-medium mt-1">Pedí un cadete, cotizá al instante y seguilo en vivo</p>
+      </div>
+    </div>
+
+    <!-- Mensaje de error -->
+    <div id="errorBox" role="alert"
+      class="hidden px-4 py-3 rounded-xl bg-brand-danger/10 border border-brand-danger/30 text-brand-danger text-sm font-semibold">
+    </div>
+
+    <!-- PASO: verificando sesión -->
+    <section id="pasoCargando" class="py-6 flex flex-col items-center gap-3 text-sm font-semibold text-brand-textMuted">
+      <svg class="animate-spin h-6 w-6 text-brand-accent" viewBox="0 0 24 24" fill="none">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+      <span id="textoCargando">Verificando cuenta...</span>
+    </section>
+
+    <!-- PASO: iniciar sesión con Google -->
+    <section id="pasoLogin" class="hidden space-y-4">
+      <button id="btnGoogle" type="button"
+        class="w-full h-14 rounded-2xl bg-white text-black font-extrabold text-base flex items-center justify-center gap-3 hover:bg-gray-100 active:scale-[0.98] transition-all shadow-md disabled:opacity-60">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4"
+            d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
+          <path fill="#34A853"
+            d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.29 21.43 7.37 24 12 24z" />
+          <path fill="#FBBC05"
+            d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.97 0 12s.46 3.84 1.26 5.42l4.02-3.15z" />
+          <path fill="#EA4335"
+            d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.37 0 3.29 2.57 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+        </svg>
+        <span>Continuar con Google</span>
+      </button>
+      <p class="text-sm text-center text-brand-textMuted">
+        Necesitás una cuenta para pedir envíos y ver tu historial.
+      </p>
+    </section>
+
+    <!-- PASO: completar perfil (primer ingreso) -->
+    <form id="pasoPerfil" class="hidden space-y-4">
+      <div>
+        <h2 class="text-lg font-extrabold text-white">Completá tu perfil</h2>
+        <p class="text-sm text-brand-textMuted mt-0.5">El cadete va a usar tu teléfono si necesita contactarte.</p>
+      </div>
+
+      <div>
+        <label for="inpNombre" class="block text-sm font-bold mb-1.5">Nombre</label>
+        <input id="inpNombre" type="text" required maxlength="80" autocomplete="name"
+          class="w-full h-12 px-4 bg-brand-surfaceLight border border-brand-border rounded-xl text-white text-base focus:outline-none focus:border-brand-accent" />
+      </div>
+
+      <div>
+        <label for="inpTelefono" class="block text-sm font-bold mb-1.5">Teléfono</label>
+        <input id="inpTelefono" type="tel" required inputmode="tel" autocomplete="tel" placeholder="Ej: 2645123456"
+          aria-describedby="ayudaTelefono"
+          class="w-full h-12 px-4 bg-brand-surfaceLight border border-brand-border rounded-xl text-white text-base font-mono focus:outline-none focus:border-brand-accent" />
+        <p id="ayudaTelefono" class="text-xs text-brand-textMuted mt-1.5">Con característica, sin 0 ni 15.</p>
+      </div>
+
+      <button id="btnGuardarPerfil" type="submit"
+        class="w-full h-12 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm hover:bg-brand-accentHover active:scale-[0.98] transition-all shadow-lg shadow-brand-accent/20 disabled:opacity-60">
+        Guardar y continuar
+      </button>
+
+      <button id="btnOtraCuenta" type="button"
+        class="w-full h-11 text-sm font-semibold text-brand-textMuted hover:text-white transition-colors">
+        Usar otra cuenta de Google
+      </button>
+    </form>
+  </main>
+
+  <script type="module">
+    import { supabase } from './conexion_supabase.js';
+    import { PAGINAS, nombreVisible, obtenerFilaCliente, registrarCliente, validarTelefono } from './sesion_cliente.js';
+
+    const pasos = {
+      cargando: document.getElementById('pasoCargando'),
+      login: document.getElementById('pasoLogin'),
+      perfil: document.getElementById('pasoPerfil')
+    };
+    const errorBox = document.getElementById('errorBox');
+
+    let idUsuarioEnProceso = null;
+    let usuarioSinPerfil = null;
+
+    iniciar();
+
+    async function iniciar() {
+      const errorOAuth = leerErrorOAuth();
+      if (errorOAuth) mostrarError(`Google no completó el inicio de sesión: ${errorOAuth}`);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await continuarConUsuario(session.user);
+        } else {
+          mostrarPaso('login');
+        }
+      } catch (err) {
+        console.warn('Error al verificar sesión inicial:', err);
+        mostrarPaso('login');
+      }
+    }
+
+    // Al volver de Google el cliente de Supabase procesa la URL y emite SIGNED_IN
+    supabase.auth.onAuthStateChange((evento, session) => {
+      if (evento === 'SIGNED_IN' && session?.user) {
+        // Fuera del callback: llamar a Supabase dentro de onAuthStateChange puede bloquearse
+        setTimeout(() => continuarConUsuario(session.user), 0);
+      }
+    });
+
+    async function continuarConUsuario(user) {
+      if (idUsuarioEnProceso === user.id) return;
+      idUsuarioEnProceso = user.id;
+      limpiarParametrosOAuth();
+      mostrarPaso('cargando', 'Preparando tu cuenta...');
+
+      try {
+        const fila = await obtenerFilaCliente(user.id);
+        if (fila) {
+          window.location.replace(PAGINAS.dashboard);
+          return;
+        }
+
+        // Primer ingreso: pedir los datos antes de crear la fila en 'Clientes'
+        usuarioSinPerfil = user;
+        document.getElementById('inpNombre').value = nombreVisible(user);
+        document.getElementById('inpTelefono').value = user.phone || '';
+        mostrarPaso('perfil');
+      } catch (err) {
+        console.error('Error al consultar la tabla Clientes:', err);
+        idUsuarioEnProceso = null;
+        mostrarPaso('login');
+        mostrarError('No pudimos verificar tu cuenta. Intentá de nuevo.');
+      }
+    }
+
+    document.getElementById('btnGoogle').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      ocultarError();
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.href.split('#')[0].split('?')[0] }
+      });
+
+      if (error) {
+        console.error('Error iniciando OAuth con Google:', error);
+        mostrarError('No se pudo abrir el inicio de sesión con Google.');
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('pasoPerfil').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!usuarioSinPerfil) return;
+      ocultarError();
+
+      const nombre = document.getElementById('inpNombre').value.trim();
+      const telefono = validarTelefono(document.getElementById('inpTelefono').value);
+
+      if (!nombre) {
+        mostrarError('Ingresá tu nombre.');
+        return;
+      }
+      if (!telefono) {
+        mostrarError('Ingresá un teléfono válido (entre 8 y 15 dígitos).');
+        return;
+      }
+
+      const btn = document.getElementById('btnGuardarPerfil');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        await registrarCliente(usuarioSinPerfil, { nombre, telefono });
+        window.location.replace(PAGINAS.dashboard);
+      } catch (err) {
+        console.error('Error al registrar cliente:', err);
+        mostrarError('No pudimos guardar tus datos. Intentá de nuevo.');
+        btn.disabled = false;
+        btn.textContent = 'Guardar y continuar';
+      }
+    });
+
+    document.getElementById('btnOtraCuenta').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      idUsuarioEnProceso = null;
+      usuarioSinPerfil = null;
+      ocultarError();
+      mostrarPaso('login');
+    });
+
+    function mostrarPaso(nombre, textoCargando = 'Verificando cuenta...') {
+      for (const [clave, el] of Object.entries(pasos)) {
+        el.classList.toggle('hidden', clave !== nombre);
+      }
+      if (nombre === 'cargando') document.getElementById('textoCargando').textContent = textoCargando;
+      if (nombre === 'login') document.getElementById('btnGoogle').disabled = false;
+    }
+
+    function mostrarError(mensaje) {
+      errorBox.textContent = mensaje;
+      errorBox.classList.remove('hidden');
+    }
+
+    function ocultarError() {
+      errorBox.classList.add('hidden');
+    }
+
+    function leerErrorOAuth() {
+      const hash = new URLSearchParams(window.location.hash.slice(1));
+      const query = new URLSearchParams(window.location.search);
+      return hash.get('error_description') || query.get('error_description');
+    }
+
+    // Quita tokens / code / errores de la URL una vez procesados
+    function limpiarParametrosOAuth() {
+      if (window.location.hash || window.location.search) {
+        history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  </script>
+</body>
+
+</html>
