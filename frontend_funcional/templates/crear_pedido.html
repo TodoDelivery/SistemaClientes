@@ -16,8 +16,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="tema_cliente.js"></script>
-  <link rel="stylesheet" href="estilos_cliente.css" />
+  <script src="../scripts/tema_cliente.js"></script>
+  <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
 <body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
@@ -187,18 +187,18 @@
   <nav id="barraInferior"></nav>
 
   <script type="module">
-    import { supabase } from './conexion_supabase.js';
-    import { ESTADOS_BUSQUEDA, cancelarBusquedaPorCliente } from './script_asignacion.js';
+    import { supabase } from '../scripts/conexion_supabase.js';
+    import { ESTADOS_BUSQUEDA, cancelarBusquedaPorCliente } from '../scripts/script_asignacion.js';
     import {
       PAGINAS, requerirCliente, buscarPedidoEnCurso, obtenerFilaCliente, modificarFavoritas, nuevaFavorita, MAX_FAVORITAS
-    } from './sesion_cliente.js';
+    } from '../scripts/sesion_cliente.js';
     import {
       montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar, hojaDatosFavorita,
       estadoUI, formatearPesos, icono, emojiFavorita, TIPOS_PAQUETE
-    } from './ui_cliente.js';
+    } from '../scripts/ui_cliente.js';
     import {
       CENTRO_MAPA, buscarDirecciones, direccionDeCoords, direccionEnCache, recordarDireccion, claveCoords, distanciaMetros
-    } from './direcciones.js';
+    } from '../scripts/direcciones.js';
 
     // Valores por defecto si Datos_cotiz no responde o no tiene filas
     const COTIZ_POR_DEFECTO = { bajada_band: 1200, tarifa_km: 1000, porc_tarif_dinamica: 30 };

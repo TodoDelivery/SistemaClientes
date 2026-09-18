@@ -23,28 +23,34 @@ Comparte el proyecto de Supabase con la **app de cadetes**, que vive en otro rep
 
 ## Estructura
 
-Todas las páginas y módulos están **en la raíz**: se enlazan con rutas relativas (`./archivo.js`, `pagina.html`). Si se mueven a subcarpetas hay que corregir cada import y cada enlace.
+Las páginas viven en `templates/`, los módulos en `scripts/` y el CSS en `styles/`. `index.html` y `404.html` quedan en la raíz: son la entrada del sitio y la página de error que Netlify toma de la raíz publicada.
+
+Cada enlace es relativo **al archivo que lo escribe**: desde una página, un módulo es `../scripts/archivo.js`, el CSS es `../styles/estilos_cliente.css` y otra página es `pagina.html` (todas son hermanas dentro de `templates/`). Si se mueve un archivo de carpeta hay que corregir cada import y cada enlace: `npm run verificar` lo detecta antes de que llegue al navegador.
 
 ```
-├── index.html              Entrada: redirige a dashboard.html
-├── login_google.html       Login con Google y alta del cliente (pide teléfono la primera vez)
-├── dashboard.html          "Mis pedidos": pedidos en curso + historial
-├── crear_pedido.html       "Pedir": mapa, direcciones, favoritas, cotización y alta del pedido
-├── pedido_activo.html      "Seguimiento": estado, cadete, GPS, chat. CORRE EL MOTOR DE ASIGNACIÓN
-├── configuracion.html      "Perfil": datos, teléfono, ubicaciones favoritas, cerrar sesión
-├── 404.html
+├── index.html              Entrada: redirige a templates/dashboard.html
+├── 404.html                Página de error (Netlify la busca en la raíz publicada)
 │
-├── conexion_supabase.js    Cliente de Supabase (URL + clave pública)
-├── script_asignacion.js    Motor de asignación de cadetes (sin DOM; avisa por eventos)
-├── sesion_cliente.js       Sesión, datos del cliente, favoritas, consultas comunes
-├── ui_cliente.js           Barra superior e inferior, toasts, hojas modales, formatos, íconos
-├── direcciones.js          Búsqueda de direcciones y dirección de un punto (Nominatim)
-├── tema_cliente.js         Colores y fuente de Tailwind
-├── estilos_cliente.css     Estilos compartidos (zonas seguras, Leaflet oscuro, animaciones)
+├── templates/
+│   ├── login_google.html   Login con Google y alta del cliente (pide teléfono la primera vez)
+│   ├── dashboard.html      "Mis pedidos": pedidos en curso + historial
+│   ├── crear_pedido.html   "Pedir": mapa, direcciones, favoritas, cotización y alta del pedido
+│   ├── pedido_activo.html  "Seguimiento": estado, cadete, GPS, chat. CORRE EL MOTOR DE ASIGNACIÓN
+│   └── configuracion.html  "Perfil": datos, teléfono, ubicaciones favoritas, cerrar sesión
+│
+├── scripts/
+│   ├── conexion_supabase.js  Cliente de Supabase (URL + clave pública)
+│   ├── script_asignacion.js  Motor de asignación de cadetes (sin DOM; avisa por eventos)
+│   ├── sesion_cliente.js     Sesión, datos del cliente, favoritas, consultas comunes
+│   ├── ui_cliente.js         Barra superior e inferior, toasts, hojas modales, formatos, íconos
+│   ├── direcciones.js        Búsqueda de direcciones y dirección de un punto (Nominatim)
+│   ├── tema_cliente.js       Colores y fuente de Tailwind
+│   └── verificar.mjs         Verificación estática (ver "Cómo no romperla"). No se publica
+│
+├── styles/
+│   └── estilos_cliente.css   Estilos compartidos (zonas seguras, Leaflet oscuro, animaciones)
 │
 ├── docs/contrato_app_cadetes.md   Especificación completa: datos, estados, motor, canales
-├── scripts/verificar.mjs          Verificación estática (ver "Cómo no romperla")
-├── .github/workflows/verificar.yml
 ├── netlify.toml
 └── package.json            Solo scripts de desarrollo (no hay dependencias)
 ```
@@ -71,20 +77,20 @@ npm run verificar    # chequeo estático, tarda segundos
 
 Sirve cualquier servidor estático, por ejemplo Live Server de VS Code. **No abrir los HTML con doble clic** (`file://`): los módulos no cargan. GPS, Web Locks y el portapapeles requieren HTTPS o `localhost`.
 
-Para probar la tarifa nocturna de día: `crear_pedido.html?simular_nocturno=1`.
+Para probar la tarifa nocturna de día: `templates/crear_pedido.html?simular_nocturno=1`.
 
 ---
 
 ## Configurar Supabase
 
-Los datos de conexión están en [`conexion_supabase.js`](conexion_supabase.js). La clave es la **publishable/anon**, pensada para el navegador. La seguridad la dan las políticas RLS, no esconder la clave. **Nunca** poner ahí la `service_role`.
+Los datos de conexión están en [`scripts/conexion_supabase.js`](scripts/conexion_supabase.js). La clave es la **publishable/anon**, pensada para el navegador. La seguridad la dan las políticas RLS, no esconder la clave. **Nunca** poner ahí la `service_role`.
 
 ### 1. Autenticación con Google
 
 - *Authentication → Providers → Google*: habilitado.
-- *Authentication → URL Configuration → Redirect URLs*: agregar **cada** dominio donde corra la app, apuntando a `login_google.html`:
-  - `http://localhost:5173/login_google.html`
-  - `https://<tu-sitio>.netlify.app/login_google.html`
+- *Authentication → URL Configuration → Redirect URLs*: agregar **cada** dominio donde corra la app, apuntando a `templates/login_google.html`:
+  - `http://localhost:5173/templates/login_google.html`
+  - `https://<tu-sitio>.netlify.app/templates/login_google.html`
   - el dominio propio, si se usa uno
 
   Si falta la URL, Google no vuelve a la app después del login.
@@ -146,7 +152,7 @@ create policy "cadetes_select" on public."Cadetes" for select to authenticated u
 `netlify.toml` ya incluye:
 
 - **`Cache-Control: no-cache`**: los `.js` no tienen hash en el nombre. Sin esto, después de un deploy el navegador puede mezclar un HTML nuevo con un módulo viejo y la página no carga.
-- **404 para `scripts/`, `docs/`, `.github/`, `README.md` y `package.json`**, que no son parte de la app.
+- **404 para `docs/`, `README.md`, `package.json` y `scripts/verificar.mjs`**, que no son parte de la app. Ojo: `scripts/` **sí** se publica, porque ahí viven los módulos de la app; solo se bloquea el verificador.
 
 Cualquier otro hosting estático sirve (Vercel, GitHub Pages, Cloudflare Pages) siempre que respete esas dos cosas y sirva por HTTPS.
 
@@ -189,12 +195,12 @@ npm run verificar
 Detecta, sin abrir el navegador:
 
 - errores de sintaxis en los `.js` y en los `<script type="module">` de cada página;
-- imports a archivos o funciones que no existen, e imports que salen del repo (`../`);
+- imports a archivos o funciones que no existen, rutas rotas entre carpetas e imports que se escapan del repo;
 - IDs usados desde JS que no están en el HTML, IDs duplicados y enlaces a páginas inexistentes;
 - librerías de CDN sin versión exacta;
 - nombres del contrato con cadetes que desaparecieron.
 
-El workflow [`.github/workflows/verificar.yml`](.github/workflows/verificar.yml) corre lo mismo en cada push a `main` y en cada PR. Conviene marcarlo como *required* en GitHub (*Settings → Branches*).
+No hay CI: la verificación se corre a mano antes de cada commit.
 
 ### Reglas del código
 

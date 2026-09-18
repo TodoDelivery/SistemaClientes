@@ -13,8 +13,8 @@
     rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="tema_cliente.js"></script>
-  <link rel="stylesheet" href="estilos_cliente.css" />
+  <script src="../scripts/tema_cliente.js"></script>
+  <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
 <body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
@@ -72,13 +72,13 @@
   <nav id="barraInferior"></nav>
 
   <script type="module">
-    import { supabase } from './conexion_supabase.js';
-    import { ESTADOS_BUSQUEDA } from './script_asignacion.js';
-    import { PAGINAS, requerirCliente, esPedidoEnCurso, telefonoPendiente } from './sesion_cliente.js';
+    import { supabase } from '../scripts/conexion_supabase.js';
+    import { ESTADOS_BUSQUEDA } from '../scripts/script_asignacion.js';
+    import { PAGINAS, requerirCliente, esPedidoEnCurso, telefonoPendiente } from '../scripts/sesion_cliente.js';
     import {
       montarLayoutCliente, crearBotonAppBar, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast,
       estadoUI, emojiPaquete, formatearPesos, formatearFechaPedido, primerNombre, escaparHtml, icono
-    } from './ui_cliente.js';
+    } from '../scripts/ui_cliente.js';
 
     const FILA_SKELETON = `
       <div class="flex items-center gap-3 px-4 py-3.5" aria-hidden="true">

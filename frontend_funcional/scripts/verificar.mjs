@@ -2,14 +2,18 @@
 // VERIFICACIÓN ESTÁTICA DE LA APP CLIENTES
 // =========================================================================
 // Uso: `npm run verificar` (o `node scripts/verificar.mjs`) desde la raíz del repo.
-// No necesita dependencias ni conexión. Corre también en CI (.github/workflows/verificar.yml).
+// No necesita dependencias ni conexión.
 //
 // Detecta lo que rompe la app sin que se note hasta abrirla en el navegador:
 //   1. Errores de sintaxis en los .js y en los <script type="module"> de cada página
-//   2. Imports a archivos o nombres que no existen, e imports que salen del repo (../)
+//   2. Imports a archivos o nombres que no existen, e imports que se escapan del repo
 //   3. IDs usados desde JS que no están en el HTML, IDs duplicados y recursos locales faltantes
 //   4. Dependencias de CDN sin versión fija
 //   5. Nombres del contrato con la app de cadetes (canales, eventos, estados) que desaparecieron
+//
+// Estructura que espera: index.html y 404.html en la raíz, páginas en templates/, módulos en
+// scripts/ y CSS en styles/. Las rutas se resuelven relativas a cada archivo, así que mover un
+// archivo de carpeta sin corregir sus enlaces se detecta acá y no en producción.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,24 +25,55 @@ const temporal = fs.mkdtempSync(path.join(os.tmpdir(), 'verificar-clientes-'));
 const errores = [];
 const error = (mensaje) => errores.push(mensaje);
 
-// Archivos de la app: todos los .html y .js de la raíz
-const archivos = fs.readdirSync(raiz).filter(f => /\.(html|js)$/.test(f));
-const fuentes = {}; // nombre -> código JS
-const htmls = {};   // nombre -> HTML completo
+// Esta herramienta no es parte de la app: no se revisa a sí misma (usa imports node:*)
+const ESTA_HERRAMIENTA = 'scripts/verificar.mjs';
+
+// Claves siempre con '/' para que sean iguales en Windows y en Linux
+const aClave = (p) => p.split(path.sep).join('/');
+
+// Archivos de la app: los .html y .js de la raíz, de templates/ y de scripts/
+const listar = (dir) => {
+  const absoluto = path.join(raiz, dir);
+  if (!fs.existsSync(absoluto)) return [];
+  return fs.readdirSync(absoluto)
+    .filter(f => /\.(html|js)$/.test(f))
+    .map(f => aClave(path.join(dir, f)))
+    .filter(f => f !== ESTA_HERRAMIENTA);
+};
+const archivos = [...listar('.'), ...listar('templates'), ...listar('scripts')];
+
+const fuentes = {};   // clave -> código JS ('scripts/x.js' o 'templates/pagina.html#moduloN')
+const htmls = {};     // clave -> HTML completo
+const carpetaDe = {}; // clave -> carpeta desde la que se resuelven sus rutas relativas
 
 for (const archivo of archivos) {
   const texto = fs.readFileSync(path.join(raiz, archivo), 'utf8');
-  if (archivo.endsWith('.js')) fuentes[archivo] = texto;
+  const carpeta = path.posix.dirname(archivo);
+  if (archivo.endsWith('.js')) {
+    fuentes[archivo] = texto;
+    carpetaDe[archivo] = carpeta;
+  }
   if (archivo.endsWith('.html')) {
     htmls[archivo] = texto;
+    carpetaDe[archivo] = carpeta;
     [...texto.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)]
-      .forEach((m, i) => { fuentes[`${archivo}#modulo${i + 1}`] = m[1]; });
+      .forEach((m, i) => {
+        const clave = `${archivo}#modulo${i + 1}`;
+        fuentes[clave] = m[1];
+        carpetaDe[clave] = carpeta;
+      });
   }
 }
 
+// Resuelve una ruta relativa desde el archivo que la escribe. null si se escapa del repo.
+const resolver = (clave, ruta) => {
+  const destino = path.posix.normalize(path.posix.join(carpetaDe[clave], ruta));
+  return destino.startsWith('..') ? null : destino;
+};
+
 // 1. Sintaxis
 for (const [nombre, codigo] of Object.entries(fuentes)) {
-  const tmp = path.join(temporal, nombre.replace(/[#.]/g, '_') + '.mjs');
+  const tmp = path.join(temporal, nombre.replace(/[#./]/g, '_') + '.mjs');
   fs.writeFileSync(tmp, codigo);
   try {
     execFileSync(process.execPath, ['--check', tmp], { stdio: 'pipe' });
@@ -53,13 +88,17 @@ for (const [nombre, codigo] of Object.entries(fuentes)) {
   for (const m of codigo.matchAll(/import\s*(?:\{([^}]*)\}|\w+)?\s*(?:from\s*)?'([^']+)'/g)) {
     const [, nombres, ruta] = m;
     if (/^https?:/.test(ruta)) continue;
-    if (!ruta.startsWith('./')) {
-      error(`${nombre} importa '${ruta}': los imports locales tienen que ser './archivo.js' dentro del repo`);
+    if (!ruta.startsWith('./') && !ruta.startsWith('../')) {
+      error(`${nombre} importa '${ruta}': los imports locales tienen que ser relativos ('./x.js' o '../scripts/x.js')`);
       continue;
     }
-    const destino = ruta.slice(2);
+    const destino = resolver(nombre, ruta);
+    if (!destino) {
+      error(`${nombre} importa '${ruta}', que se escapa del repo`);
+      continue;
+    }
     if (!fuentes[destino]) {
-      error(`${nombre} importa '${ruta}', que no existe`);
+      error(`${nombre} importa '${ruta}', que no existe (busqué ${destino})`);
       continue;
     }
     const disponibles = exportsDe(fuentes[destino]);
@@ -83,13 +122,21 @@ for (const [archivo, html] of Object.entries(htmls)) {
   for (const m of html.matchAll(/(?:getElementById|\$)\('([\w-]+)'\)/g)) {
     if (!ids.includes(m[1]) && !idsCreadosPorJs.has(m[1])) error(`${archivo} usa #${m[1]}, que no existe`);
   }
-  for (const m of html.matchAll(/(?:src|href)="([\w.-]+\.(?:js|css|html))(?:[?#][^"]*)?"/g)) {
-    if (!fs.existsSync(path.join(raiz, m[1]))) error(`${archivo} referencia ${m[1]}, que no existe`);
+  // src/href locales: se resuelven desde la carpeta del HTML que los escribe
+  for (const m of html.matchAll(/(?:src|href)="([\w./-]+\.(?:js|css|html))(?:[?#][^"]*)?"/g)) {
+    const destino = resolver(archivo, m[1]);
+    if (!destino || !fs.existsSync(path.join(raiz, destino))) {
+      error(`${archivo} referencia ${m[1]}, que no existe (busqué ${destino ?? 'fuera del repo'})`);
+    }
   }
 }
+// Navegación desde JS: un nombre suelto ('dashboard.html') se resuelve contra la página que lo
+// usa, y todas las páginas de la app viven en templates/
 for (const [nombre, codigo] of Object.entries(fuentes)) {
   for (const m of codigo.matchAll(/'([\w-]+\.html)'/g)) {
-    if (!fs.existsSync(path.join(raiz, m[1]))) error(`${nombre} navega a ${m[1]}, que no existe`);
+    if (!fs.existsSync(path.join(raiz, 'templates', m[1])) && !fs.existsSync(path.join(raiz, m[1]))) {
+      error(`${nombre} navega a ${m[1]}, que no existe`);
+    }
   }
 }
 

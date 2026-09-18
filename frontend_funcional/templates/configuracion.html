@@ -16,8 +16,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="tema_cliente.js"></script>
-  <link rel="stylesheet" href="estilos_cliente.css" />
+  <script src="../scripts/tema_cliente.js"></script>
+  <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
 <body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
@@ -127,12 +127,12 @@
     import {
       requerirCliente, cerrarSesion, buscarPedidoEnCurso, actualizarDatosCliente, validarTelefono,
       telefonoPendiente, modificarFavoritas, nuevaFavorita, MAX_FAVORITAS
-    } from './sesion_cliente.js';
+    } from '../scripts/sesion_cliente.js';
     import {
       montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar, abrirHoja,
       hojaDatosFavorita, montarCamposFavorita, pintarAvatar, emojiFavorita, icono
-    } from './ui_cliente.js';
-    import { CENTRO_MAPA, buscarDirecciones, direccionDeCoords } from './direcciones.js';
+    } from '../scripts/ui_cliente.js';
+    import { CENTRO_MAPA, buscarDirecciones, direccionDeCoords } from '../scripts/direcciones.js';
 
     let clienteActual = null;
     let favoritas = [];

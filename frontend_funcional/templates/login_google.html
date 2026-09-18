@@ -13,8 +13,8 @@
     rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="tema_cliente.js"></script>
-  <link rel="stylesheet" href="estilos_cliente.css" />
+  <script src="../scripts/tema_cliente.js"></script>
+  <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
 <body class="flex items-center justify-center p-4 pt-safe pb-safe antialiased font-sans selection:bg-brand-accent selection:text-black">
@@ -107,8 +107,8 @@
   </main>
 
   <script type="module">
-    import { supabase } from './conexion_supabase.js';
-    import { PAGINAS, nombreVisible, obtenerFilaCliente, registrarCliente, validarTelefono } from './sesion_cliente.js';
+    import { supabase } from '../scripts/conexion_supabase.js';
+    import { PAGINAS, nombreVisible, obtenerFilaCliente, registrarCliente, validarTelefono } from '../scripts/sesion_cliente.js';
 
     const pasos = {
       cargando: document.getElementById('pasoCargando'),

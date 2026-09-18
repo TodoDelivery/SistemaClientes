@@ -16,8 +16,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="tema_cliente.js"></script>
-  <link rel="stylesheet" href="estilos_cliente.css" />
+  <script src="../scripts/tema_cliente.js"></script>
+  <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
 <body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
@@ -193,17 +193,17 @@
   <nav id="barraInferior"></nav>
 
   <script type="module">
-    import { supabase } from './conexion_supabase.js';
+    import { supabase } from '../scripts/conexion_supabase.js';
     import {
       ESTADOS_BUSQUEDA, iniciarBusquedaCadete, detenerBusqueda, obtenerBusquedaActiva, obtenerEstadoBusqueda,
       obtenerMotivoCancelacion, solicitarRevisionDePedido, registrarRechazoCadete, cancelarBusquedaPorCliente,
       suscribirMotorAsignacion
-    } from './script_asignacion.js';
-    import { requerirCliente, buscarPedidoEnCurso, registrarLimpiezaAntesDeSalir } from './sesion_cliente.js';
+    } from '../scripts/script_asignacion.js';
+    import { requerirCliente, buscarPedidoEnCurso, registrarLimpiezaAntesDeSalir } from '../scripts/sesion_cliente.js';
     import {
       montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar,
       formatearPesos, formatearFechaPedido, emojiPaquete, iniciales
-    } from './ui_cliente.js';
+    } from '../scripts/ui_cliente.js';
 
     const ESTADOS_CON_CADETE = ['asignado', 'en_camino_entrega', 'entregado', 'rendido'];
     const ESTADOS_CHAT = ['asignado', 'en_camino_entrega'];
