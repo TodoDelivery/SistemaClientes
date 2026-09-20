@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#090B10" />
+  <meta name="theme-color" content="#FF5A1F" />
   <title>Todo Delivery - Mi perfil</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
-<body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
+<body class="font-sans antialiased selection:bg-brand-accent selection:text-white">
 
   <header id="appBar"></header>
 
@@ -37,74 +37,74 @@
     <!-- Encabezado del perfil -->
     <section class="flex items-center gap-4 px-1" aria-label="Perfil">
       <div id="avatarPerfil"
-        class="w-20 h-20 rounded-full overflow-hidden bg-brand-surface border-2 border-brand-accent/60 text-2xl font-black text-brand-accent flex items-center justify-center shrink-0"></div>
+        class="w-20 h-20 rounded-full overflow-hidden bg-brand-surface border-2 border-brand-accent/60 text-2xl font-black text-brand-accent flex items-center justify-center shrink-0 shadow-sm"></div>
       <div class="min-w-0">
-        <h2 id="nombrePerfil" class="text-xl font-extrabold truncate"></h2>
+        <h2 id="nombrePerfil" class="text-xl font-extrabold text-brand-dark truncate"></h2>
         <p id="emailPerfil" class="text-sm text-brand-textMuted truncate"></p>
         <p id="clienteDesde" class="text-xs text-brand-textMuted mt-0.5"></p>
       </div>
     </section>
 
     <!-- Mis datos -->
-    <section id="datos" class="scroll-mt-20 bg-brand-surface border border-brand-border rounded-3xl p-4" aria-labelledby="tituloDatos">
-      <h2 id="tituloDatos" class="text-base font-extrabold">Mis datos</h2>
+    <section id="datos" class="scroll-mt-20 bg-brand-surface border border-brand-border rounded-3xl p-4 shadow-card" aria-labelledby="tituloDatos">
+      <h2 id="tituloDatos" class="text-base font-extrabold text-brand-dark">Mis datos</h2>
 
       <p id="avisoTelefono"
-        class="hidden mt-3 px-3 py-2.5 rounded-xl bg-brand-warning/10 border border-brand-warning/30 text-brand-warning text-sm font-semibold">
+        class="hidden mt-3 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold">
         📞 Cargá tu teléfono para que el cadete pueda llamarte si lo necesita.
       </p>
 
       <form id="formDatos" novalidate class="mt-4 space-y-4">
         <div>
-          <label for="inpNombre" class="block text-sm font-bold mb-1.5">Nombre</label>
+          <label for="inpNombre" class="block text-sm font-bold text-brand-dark mb-1.5">Nombre</label>
           <input id="inpNombre" type="text" maxlength="80" autocomplete="name" aria-describedby="errorNombre"
-            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-white focus:outline-none focus:border-brand-accent aria-[invalid=true]:border-brand-danger" />
+            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-brand-dark placeholder:text-brand-textMuted/70 focus:outline-none focus:border-brand-accent focus:bg-white aria-[invalid=true]:border-brand-danger transition-colors" />
           <p id="errorNombre" class="hidden mt-1.5 text-sm font-semibold text-brand-danger"></p>
         </div>
 
         <div>
-          <label for="inpTelefono" class="block text-sm font-bold mb-1.5">Teléfono</label>
+          <label for="inpTelefono" class="block text-sm font-bold text-brand-dark mb-1.5">Teléfono</label>
           <input id="inpTelefono" type="tel" inputmode="tel" autocomplete="tel" placeholder="Ej: 2645123456"
             aria-describedby="ayudaTelefono errorTelefono"
-            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-white font-mono placeholder:text-brand-textMuted/70 focus:outline-none focus:border-brand-accent aria-[invalid=true]:border-brand-danger" />
+            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-brand-dark font-mono placeholder:text-brand-textMuted/70 focus:outline-none focus:border-brand-accent focus:bg-white aria-[invalid=true]:border-brand-danger transition-colors" />
           <p id="ayudaTelefono" class="mt-1.5 text-xs text-brand-textMuted">Con característica, sin 0 ni 15.</p>
           <p id="errorTelefono" class="hidden mt-1 text-sm font-semibold text-brand-danger"></p>
         </div>
 
         <div>
-          <p class="text-sm font-bold mb-1.5">Email</p>
+          <p class="text-sm font-bold text-brand-dark mb-1.5">Email</p>
           <p id="labelEmail"
-            class="h-12 px-4 rounded-xl bg-brand-surfaceLight/50 border border-brand-border/60 text-base text-brand-textMuted flex items-center overflow-hidden whitespace-nowrap text-ellipsis"></p>
+            class="h-12 px-4 rounded-xl bg-brand-surfaceLight/70 border border-brand-border text-base text-brand-dark flex items-center overflow-hidden whitespace-nowrap text-ellipsis select-all"></p>
           <p class="mt-1.5 text-xs text-brand-textMuted">Viene de tu cuenta de Google y no se puede cambiar acá.</p>
         </div>
 
         <button id="btnGuardarDatos" type="submit" disabled
-          class="w-full h-12 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
+          class="w-full h-12 rounded-xl bg-brand-accent text-white font-extrabold text-sm shadow-btn hover:bg-brand-accentHover disabled:opacity-40 disabled:cursor-not-allowed transition-all">
           Guardar cambios
         </button>
       </form>
     </section>
 
     <!-- Ubicaciones favoritas -->
-    <section id="favoritas" class="scroll-mt-20 bg-brand-surface border border-brand-border rounded-3xl p-4" aria-labelledby="tituloFavoritas">
+    <section id="favoritas" class="scroll-mt-20 bg-brand-surface border border-brand-border rounded-3xl p-4 shadow-card" aria-labelledby="tituloFavoritas">
       <div class="flex items-center justify-between gap-2">
         <div>
-          <h2 id="tituloFavoritas" class="text-base font-extrabold">Ubicaciones favoritas</h2>
+          <h2 id="tituloFavoritas" class="text-base font-extrabold text-brand-dark">Ubicaciones favoritas</h2>
           <p class="text-sm text-brand-textMuted">Elegilas rápido al pedir un envío</p>
         </div>
-        <span id="contadorFavoritas" class="px-2.5 py-1 rounded-full bg-brand-surfaceLight text-xs font-bold text-brand-textMuted shrink-0"></span>
+        <span id="contadorFavoritas" class="px-2.5 py-1 rounded-full bg-brand-surfaceLight border border-brand-border/60 text-xs font-bold text-brand-dark shrink-0"></span>
       </div>
 
       <div id="listaFavoritas" class="mt-3 divide-y divide-brand-border"></div>
 
       <button id="btnAgregarFavorita" type="button"
-        class="mt-3 w-full h-12 rounded-xl border border-dashed border-brand-accent/50 text-brand-accent font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-accent/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+        class="mt-3 w-full h-12 rounded-xl border border-dashed border-brand-accent/60 text-brand-accent hover:bg-brand-accent/10 font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
       </button>
     </section>
 
     <!-- Cuenta -->
-    <section class="bg-brand-surface border border-brand-border rounded-3xl p-4" aria-labelledby="tituloCuenta">
-      <h2 id="tituloCuenta" class="text-base font-extrabold">Cuenta</h2>
+    <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 shadow-card" aria-labelledby="tituloCuenta">
+      <h2 id="tituloCuenta" class="text-base font-extrabold text-brand-dark">Cuenta</h2>
 
       <div class="mt-3 flex items-center gap-2">
         <div class="min-w-0 flex-1">
@@ -112,11 +112,11 @@
           <p id="idCliente" class="font-mono text-xs text-brand-textMuted truncate"></p>
         </div>
         <button id="btnCopiarId" type="button" aria-label="Copiar ID de cliente" title="Copiar"
-          class="w-10 h-10 rounded-xl text-brand-textMuted hover:text-white hover:bg-brand-surfaceLight flex items-center justify-center shrink-0"></button>
+          class="w-10 h-10 rounded-xl text-brand-textMuted hover:text-brand-dark hover:bg-brand-surfaceLight flex items-center justify-center shrink-0 transition-colors"></button>
       </div>
 
       <button id="btnCerrarSesion" type="button"
-        class="mt-4 w-full h-12 rounded-xl border border-brand-danger/40 text-brand-danger font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-danger/10 transition-colors disabled:opacity-60">
+        class="mt-4 w-full h-12 rounded-xl border border-brand-danger/30 text-brand-danger font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-danger/10 transition-colors disabled:opacity-60">
       </button>
     </section>
   </main>
@@ -285,10 +285,10 @@
         fila.innerHTML = `
           <span data-emoji class="w-11 h-11 rounded-2xl bg-brand-surfaceLight flex items-center justify-center text-xl shrink-0" aria-hidden="true"></span>
           <div class="min-w-0 flex-1">
-            <p data-nombre class="text-sm font-bold truncate"></p>
+            <p data-nombre class="text-sm font-bold text-brand-dark truncate"></p>
             <p data-direccion class="text-xs text-brand-textMuted truncate"></p>
           </div>
-          <button type="button" data-editar class="w-10 h-10 rounded-xl text-brand-textMuted hover:text-white hover:bg-brand-surfaceLight flex items-center justify-center shrink-0">
+          <button type="button" data-editar class="w-10 h-10 rounded-xl text-brand-textMuted hover:text-brand-dark hover:bg-brand-surfaceLight flex items-center justify-center shrink-0 transition-colors">
             ${icono('editar', 'w-5 h-5')}
           </button>
           <button type="button" data-borrar class="w-10 h-10 rounded-xl text-brand-danger/80 hover:text-brand-danger hover:bg-brand-danger/10 flex items-center justify-center shrink-0">
@@ -366,23 +366,23 @@
 
       const guardada = await abrirHoja((contenido, cerrar) => {
         contenido.innerHTML = `
-          <h2 id="tituloHoja" class="text-lg font-extrabold">Nueva ubicación favorita</h2>
+          <h2 id="tituloHoja" class="text-lg font-extrabold text-brand-dark">Nueva ubicación favorita</h2>
           <div data-campos class="mt-4"></div>
 
-          <p class="mt-4 text-sm font-bold mb-1.5">Ubicación</p>
-          <div class="relative isolate h-60 rounded-2xl overflow-hidden border border-brand-border bg-brand-bg">
+          <p class="mt-4 text-sm font-bold text-brand-dark mb-1.5">Ubicación</p>
+          <div class="relative isolate h-60 rounded-2xl overflow-hidden border border-brand-border bg-slate-100 shadow-inner">
             <div data-mapa class="absolute inset-0"></div>
             <div data-zona-busqueda class="absolute top-2 inset-x-2 z-[500]">
-              <div role="search" class="flex items-center gap-2 h-11 pl-3 pr-1 rounded-xl bg-brand-surface/95 backdrop-blur border border-brand-border shadow-xl focus-within:border-brand-accent">
+              <div role="search" class="flex items-center gap-2 h-11 pl-3 pr-1 rounded-xl bg-white/95 backdrop-blur border border-brand-border shadow-md focus-within:border-brand-accent">
                 <label for="inpBuscarFavorita" class="sr-only">Buscar dirección</label>
                 <input id="inpBuscarFavorita" type="search" enterkeyhint="search" autocomplete="off" placeholder="Buscar dirección"
-                  class="flex-1 min-w-0 h-full bg-transparent text-base text-white placeholder:text-brand-textMuted focus:outline-none" />
-                <button type="button" data-buscar class="h-9 px-3 rounded-lg bg-brand-accent text-brand-bg text-sm font-extrabold shrink-0 disabled:opacity-60">Buscar</button>
+                  class="flex-1 min-w-0 h-full bg-transparent text-base text-brand-dark placeholder:text-brand-textMuted focus:outline-none" />
+                <button type="button" data-buscar class="h-9 px-3 rounded-lg bg-brand-accent text-white text-sm font-extrabold shrink-0 shadow-btn hover:bg-brand-accentHover disabled:opacity-60 transition-colors">Buscar</button>
               </div>
-              <ul data-resultados class="hidden mt-1.5 max-h-40 overflow-y-auto rounded-xl bg-brand-surface border border-brand-border shadow-2xl divide-y divide-brand-border"></ul>
+              <ul data-resultados class="hidden mt-1.5 max-h-40 overflow-y-auto rounded-xl bg-white border border-brand-border shadow-2xl divide-y divide-brand-border"></ul>
             </div>
             <button type="button" data-gps aria-label="Usar mi ubicación actual" title="Usar mi ubicación"
-              class="absolute bottom-2 right-2 z-[500] w-11 h-11 rounded-full bg-brand-surface/95 border border-brand-border text-brand-accent flex items-center justify-center shadow-xl disabled:opacity-60">
+              class="absolute bottom-2 right-2 z-[500] w-11 h-11 rounded-full bg-white/95 border border-brand-border text-brand-accent flex items-center justify-center shadow-md hover:bg-brand-surfaceLight disabled:opacity-60 transition-colors">
               ${icono('gps', 'w-5 h-5')}
             </button>
           </div>
@@ -390,8 +390,8 @@
 
           <p data-error role="alert" class="hidden mt-3 text-sm font-semibold text-brand-danger"></p>
           <div class="mt-5 grid gap-2">
-            <button type="button" data-guardar class="h-12 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm disabled:opacity-60">Guardar ubicación</button>
-            <button type="button" data-cancelar class="h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm">Cancelar</button>
+            <button type="button" data-guardar class="h-12 rounded-xl bg-brand-accent text-white font-extrabold text-sm shadow-btn hover:bg-brand-accentHover disabled:opacity-60 transition-all">Guardar ubicación</button>
+            <button type="button" data-cancelar class="h-12 rounded-xl bg-white border border-brand-border text-brand-dark font-bold text-sm hover:bg-brand-surfaceLight transition-colors">Cancelar</button>
           </div>
         `;
 
@@ -418,7 +418,7 @@
           elDireccion.textContent = direccion
             ? [direccion.titulo, direccion.zona].filter(Boolean).join(', ')
             : `Punto en el mapa (${punto.lat.toFixed(4)}, ${punto.lng.toFixed(4)})`;
-          elDireccion.className = 'mt-2 text-sm font-semibold text-white';
+          elDireccion.className = 'mt-2 text-sm font-semibold text-brand-dark';
         };
 
         const fijarPunto = async (latlng, { direccionConocida = null, centrar = false } = {}) => {
@@ -476,7 +476,7 @@
             btn.type = 'button';
             btn.className = 'w-full text-left px-3 py-2.5 hover:bg-brand-surfaceLight focus:bg-brand-surfaceLight focus:outline-none';
             const titulo = document.createElement('span');
-            titulo.className = 'block text-sm font-semibold truncate';
+            titulo.className = 'block text-sm font-semibold text-brand-dark truncate';
             titulo.textContent = r.direccion.titulo;
             const zona = document.createElement('span');
             zona.className = 'block text-xs text-brand-textMuted truncate';
@@ -620,6 +620,7 @@
         btnSalir.disabled = true;
         btnSalir.querySelector('span').textContent = 'Cerrando sesión...';
         await cerrarSesion();
+        window.location.replace('../index.html');
       });
     }
   </script>

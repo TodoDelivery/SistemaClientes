@@ -18,17 +18,17 @@ export const TIPOS_PAQUETE = [
   { valor: 'Farmacia', emoji: '💊', texto: 'Farmacia' }
 ];
 
-const CHIP_BUSCANDO = 'bg-amber-500/15 text-amber-300';
-const CHIP_CANCELADO = 'bg-red-500/15 text-red-300';
+const CHIP_BUSCANDO = 'bg-amber-50 text-amber-700 border border-amber-200/80';
+const CHIP_CANCELADO = 'bg-red-50 text-red-700 border border-red-200/80';
 
 const ESTADOS_UI = {
   pendiente: { texto: 'Buscando cadete', clases: CHIP_BUSCANDO },
   libre: { texto: 'Buscando cadete', clases: CHIP_BUSCANDO },
   en_confirmacion: { texto: 'Confirmando cadete', clases: CHIP_BUSCANDO },
-  asignado: { texto: 'Cadete asignado', clases: 'bg-blue-500/15 text-blue-300' },
-  en_camino_entrega: { texto: 'En camino', clases: 'bg-brand-accent/15 text-brand-accent' },
-  entregado: { texto: 'Entregado', clases: 'bg-emerald-500/15 text-emerald-300' },
-  rendido: { texto: 'Entregado', clases: 'bg-emerald-500/15 text-emerald-300' },
+  asignado: { texto: 'Cadete asignado', clases: 'bg-blue-50 text-blue-700 border border-blue-200/80' },
+  en_camino_entrega: { texto: 'En camino', clases: 'bg-orange-50 text-brand-accent border border-orange-200/80' },
+  entregado: { texto: 'Entregado', clases: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80' },
+  rendido: { texto: 'Entregado', clases: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80' },
   cancelado: { texto: 'Cancelado', clases: CHIP_CANCELADO }
 };
 
@@ -95,37 +95,37 @@ const PESTANAS = [
  */
 export function montarLayoutCliente(cliente, pestanaActiva, titulo) {
   const appBar = document.getElementById('appBar');
-  appBar.className = 'sticky top-0 z-[1100] pt-safe bg-brand-bg/85 backdrop-blur-xl border-b border-brand-border/60';
+  appBar.className = 'sticky top-0 z-[1100] pt-safe bg-white/90 backdrop-blur-xl border-b border-brand-border/80 shadow-sm';
   appBar.innerHTML = `
     <div class="mx-auto max-w-xl h-14 px-4 flex items-center gap-3">
       <a href="${PAGINAS.dashboard}" aria-label="Todo Delivery, ir a mis pedidos"
-        class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-accent to-brand-accentHover flex items-center justify-center text-brand-bg font-black text-sm shrink-0">TD</a>
-      <h1 id="tituloPagina" class="flex-1 min-w-0 text-lg font-extrabold tracking-tight truncate"></h1>
+        class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-accent to-brand-accentHover flex items-center justify-center text-white font-black text-sm shrink-0 shadow-sm">TD</a>
+      <h1 id="tituloPagina" class="flex-1 min-w-0 text-lg font-extrabold tracking-tight truncate text-brand-dark"></h1>
       <div id="accionesAppBar" class="flex items-center gap-1"></div>
       <a id="btnCuenta" href="${PAGINAS.configuracion}" aria-label="Mi perfil"
-        class="w-10 h-10 rounded-full overflow-hidden bg-brand-surfaceLight border ${pestanaActiva === 'perfil' ? 'border-brand-accent' : 'border-brand-border'} text-sm font-extrabold text-brand-accent flex items-center justify-center shrink-0 hover:border-brand-accent/60 transition-colors"></a>
+        class="w-10 h-10 rounded-full overflow-hidden bg-brand-surfaceLight border ${pestanaActiva === 'perfil' ? 'border-brand-accent' : 'border-brand-border'} text-sm font-extrabold text-brand-accent flex items-center justify-center shrink-0 hover:border-brand-accent/60 transition-colors shadow-sm"></a>
     </div>
   `;
   document.getElementById('tituloPagina').textContent = titulo;
   pintarAvatar(document.getElementById('btnCuenta'), cliente);
 
   const barra = document.getElementById('barraInferior');
-  barra.className = 'fixed inset-x-0 bottom-0 z-[1100] pb-safe bg-brand-surface/95 backdrop-blur-xl border-t border-brand-border';
+  barra.className = 'fixed inset-x-0 bottom-0 z-[1100] pb-safe bg-white/95 backdrop-blur-xl border-t border-brand-border shadow-[0_-4px_16px_rgba(0,0,0,0.03)]';
   barra.setAttribute('aria-label', 'Navegación principal');
   barra.innerHTML = `
     <div class="mx-auto max-w-xl grid grid-cols-4" style="height: var(--alto-nav)">
       ${PESTANAS.map(p => {
         const activa = p.id === pestanaActiva;
         const pulso = p.id === 'seguimiento'
-          ? `<span id="tabTrackingPulse" class="hidden absolute top-0 right-2 w-2.5 h-2.5 rounded-full bg-brand-accent ring-2 ring-brand-surface">
+          ? `<span id="tabTrackingPulse" class="hidden absolute top-0 right-2 w-2.5 h-2.5 rounded-full bg-brand-accent ring-2 ring-white">
                <span class="absolute inset-0 rounded-full bg-brand-accent animate-ping"></span>
                <span class="sr-only">(pedido en curso)</span>
              </span>`
           : '';
         return `
           <a href="${p.href}" ${activa ? 'aria-current="page"' : ''}
-            class="flex flex-col items-center justify-center gap-1 text-xs font-bold transition-colors ${activa ? 'text-brand-accent' : 'text-brand-textMuted hover:text-white'}">
-            <span class="relative flex items-center justify-center w-14 h-8 rounded-full transition-colors ${activa ? 'bg-brand-accent/15' : ''}">
+            class="flex flex-col items-center justify-center gap-1 text-xs font-bold transition-colors ${activa ? 'text-brand-accent' : 'text-brand-textMuted hover:text-brand-dark'}">
+            <span class="relative flex items-center justify-center w-14 h-8 rounded-full transition-colors ${activa ? 'bg-brand-accent/10' : ''}">
               ${icono(p.icono)}
               ${pulso}
             </span>
@@ -151,7 +151,7 @@ export function crearBotonAppBar(nombreIcono, etiqueta) {
   btn.type = 'button';
   btn.setAttribute('aria-label', etiqueta);
   btn.title = etiqueta;
-  btn.className = 'w-10 h-10 rounded-full flex items-center justify-center text-brand-textMuted hover:text-white hover:bg-brand-surfaceLight transition-colors disabled:opacity-60';
+  btn.className = 'w-10 h-10 rounded-full flex items-center justify-center text-brand-textMuted hover:text-brand-dark hover:bg-brand-surfaceLight transition-colors disabled:opacity-60';
   btn.innerHTML = icono(nombreIcono, 'w-5 h-5');
   return btn;
 }
@@ -207,8 +207,8 @@ export function montarCamposFavorita(contenedor, { tipo = 'casa', nombre = '' } 
       const activo = btn.dataset.tipo === tipoActual;
       btn.setAttribute('aria-checked', String(activo));
       btn.className = `h-11 rounded-xl border text-sm font-bold flex items-center justify-center gap-1.5 transition-colors ${activo
-        ? 'bg-brand-accent/15 border-brand-accent text-brand-accent'
-        : 'bg-brand-surfaceLight border-brand-border text-brand-textMuted hover:text-white'}`;
+        ? 'bg-brand-accent/10 border-brand-accent text-brand-accent'
+        : 'bg-brand-surfaceLight border-brand-border text-brand-textMuted hover:text-brand-dark hover:bg-brand-surfaceHover'}`;
     });
   };
 
@@ -243,9 +243,9 @@ export function hojaDatosFavorita({ titulo, detalle = '', tipo, nombre = '', tex
       <p data-error role="alert" class="hidden mt-3 text-sm font-semibold text-brand-danger"></p>
       <div class="mt-5 grid gap-2">
         <button type="button" data-guardar
-          class="h-12 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm disabled:opacity-60"></button>
+          class="h-12 rounded-xl bg-brand-accent text-white font-extrabold text-sm shadow-btn hover:bg-brand-accentHover transition-colors disabled:opacity-60"></button>
         <button type="button" data-cancelar
-          class="h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm">Cancelar</button>
+          class="h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm text-brand-dark hover:bg-brand-surfaceHover transition-colors">Cancelar</button>
       </div>
     `;
     contenido.querySelector('#tituloHoja').textContent = titulo;
@@ -376,9 +376,9 @@ export function confirmar({ titulo, mensaje = '', textoConfirmar = 'Confirmar', 
       <p data-mensaje class="mt-1.5 text-sm text-brand-textMuted whitespace-pre-line"></p>
       <div class="mt-5 grid gap-2">
         <button type="button" data-si ${peligro ? '' : 'data-autofoco'}
-          class="h-12 rounded-xl font-extrabold text-sm ${peligro ? 'bg-brand-danger text-white' : 'bg-brand-accent text-brand-bg'}"></button>
+          class="h-12 rounded-xl font-extrabold text-sm ${peligro ? 'bg-brand-danger text-white hover:bg-red-600' : 'bg-brand-accent text-white shadow-btn hover:bg-brand-accentHover'} transition-colors"></button>
         <button type="button" data-no ${peligro ? 'data-autofoco' : ''}
-          class="h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm"></button>
+          class="h-12 rounded-xl bg-brand-surfaceLight border border-brand-border text-brand-dark font-bold text-sm hover:bg-brand-surfaceHover transition-colors"></button>
       </div>
     `;
     contenido.querySelector('#tituloHoja').textContent = titulo;
@@ -396,10 +396,10 @@ export function confirmar({ titulo, mensaje = '', textoConfirmar = 'Confirmar', 
 // AVISOS (TOASTS)
 // -------------------------------------------------------------------------
 const ESTILOS_TOAST = {
-  info: { clases: 'bg-brand-surface/95 border-brand-border text-white', icono: 'ℹ️' },
-  exito: { clases: 'bg-emerald-950/95 border-emerald-500/40 text-emerald-50', icono: '✅' },
-  aviso: { clases: 'bg-amber-950/95 border-amber-500/40 text-amber-50', icono: '⚠️' },
-  error: { clases: 'bg-red-950/95 border-red-500/40 text-red-50', icono: '⚠️' }
+  info: { clases: 'bg-white/95 border-brand-border text-brand-dark shadow-md', icono: 'ℹ️' },
+  exito: { clases: 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-md', icono: '✅' },
+  aviso: { clases: 'bg-amber-50 border-amber-200 text-amber-900 shadow-md', icono: '⚠️' },
+  error: { clases: 'bg-red-50 border-red-200 text-red-900 shadow-md', icono: '⚠️' }
 };
 
 /**
@@ -459,7 +459,7 @@ export function mostrarErrorPagina(mensaje) {
       <h2 class="mt-5 text-xl font-extrabold">No pudimos cargar la página</h2>
       <p id="detalleErrorPagina" class="mt-2 text-sm text-brand-textMuted max-w-xs"></p>
       <button type="button" onclick="location.reload()"
-        class="mt-6 h-12 px-6 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm">Reintentar</button>
+        class="mt-6 h-12 px-6 rounded-xl bg-brand-accent text-white shadow-btn hover:bg-brand-accentHover font-extrabold text-sm">Reintentar</button>
     </div>
   `;
   document.getElementById('detalleErrorPagina').textContent = mensaje;

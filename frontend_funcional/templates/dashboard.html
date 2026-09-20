@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#090B10" />
+  <meta name="theme-color" content="#FF5A1F" />
   <title>Todo Delivery - Mis pedidos</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
-<body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
+<body class="font-sans antialiased selection:bg-brand-accent/20 selection:text-brand-dark">
 
   <header id="appBar"></header>
 
@@ -29,17 +29,17 @@
     Cargando...
   </div>
 
-  <main id="contenidoPagina" class="hidden mx-auto w-full max-w-xl px-4 pt-5 espacio-nav flex flex-col gap-7">
+  <main id="contenidoPagina" class="hidden mx-auto w-full max-w-xl px-4 pt-5 espacio-nav flex flex-col gap-6">
 
     <!-- Saludo + acción principal -->
     <section aria-label="Pedir un envío">
       <p id="saludoCliente" class="text-sm font-semibold text-brand-textMuted"></p>
       <a href="crear_pedido.html"
-        class="mt-2 flex items-center gap-4 p-4 rounded-3xl bg-gradient-to-br from-brand-accent to-brand-accentHover text-brand-bg shadow-lg shadow-brand-accent/20 active:scale-[0.99] transition-transform">
-        <span class="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center text-2xl shrink-0" aria-hidden="true">🛵</span>
+        class="mt-2 flex items-center gap-4 p-4 rounded-3xl bg-gradient-to-br from-brand-accent to-brand-accentHover text-white shadow-btn hover:shadow-btn-hover active:scale-[0.99] transition-all">
+        <span class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0" aria-hidden="true">🛵</span>
         <span class="flex-1 min-w-0">
           <span class="block text-lg font-black leading-tight">Pedir un envío</span>
-          <span class="block text-sm font-semibold opacity-75">Cotizá al instante y seguilo en vivo</span>
+          <span class="block text-sm font-medium opacity-90">Cotizá al instante y seguilo en vivo</span>
         </span>
         <svg class="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -50,10 +50,10 @@
 
     <!-- Teléfono sin cargar -->
     <a id="avisoTelefono" href="configuracion.html#telefono"
-      class="hidden flex items-center gap-3 -mt-3 px-4 py-3 rounded-2xl bg-brand-warning/10 border border-brand-warning/30">
+      class="hidden flex items-center gap-3 -mt-2 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-sm">
       <span class="text-xl" aria-hidden="true">📞</span>
-      <span class="flex-1 min-w-0 text-sm font-semibold text-brand-warning">Cargá tu teléfono para que el cadete pueda llamarte</span>
-      <span class="text-sm font-bold text-brand-warning shrink-0">Completar</span>
+      <span class="flex-1 min-w-0 text-sm font-semibold text-amber-900">Cargá tu teléfono para que el cadete pueda llamarte</span>
+      <span class="text-sm font-bold text-amber-700 shrink-0">Completar</span>
     </a>
 
     <!-- Pedidos en curso -->
@@ -65,7 +65,7 @@
     <!-- Historial -->
     <section class="space-y-3" aria-labelledby="tituloHistorial">
       <h2 id="tituloHistorial" class="text-xs font-extrabold uppercase tracking-wider text-brand-textMuted">Historial</h2>
-      <div id="historialList" class="bg-brand-surface border border-brand-border rounded-3xl overflow-hidden divide-y divide-brand-border" aria-busy="true"></div>
+      <div id="historialList" class="bg-brand-surface border border-brand-border rounded-3xl overflow-hidden divide-y divide-brand-border shadow-card" aria-busy="true"></div>
     </section>
   </main>
 
@@ -177,18 +177,18 @@
         const estado = estadoUI(p);
         return `
           <a href="${urlPedido(p.id_pedido)}"
-            class="block p-4 rounded-3xl bg-brand-surface border ${buscando ? 'border-brand-warning/40' : 'border-brand-accent/40'} active:scale-[0.99] transition-transform">
+            class="block p-4 rounded-3xl bg-brand-surface border ${buscando ? 'border-amber-300' : 'border-brand-accent/40'} shadow-card hover:shadow-card-hover active:scale-[0.99] transition-all">
             <div class="flex items-center gap-3">
-              <span class="w-12 h-12 rounded-2xl ${buscando ? 'bg-brand-warning/15' : 'bg-brand-accent/15'} flex items-center justify-center text-2xl shrink-0" aria-hidden="true">
+              <span class="w-12 h-12 rounded-2xl ${buscando ? 'bg-amber-50 text-amber-600' : 'bg-orange-50 text-brand-accent'} flex items-center justify-center text-2xl shrink-0" aria-hidden="true">
                 ${buscando ? '🔍' : '🛵'}
               </span>
               <span class="flex-1 min-w-0">
                 <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${estado.clases}">${escaparHtml(estado.texto)}</span>
-                <span class="mt-1 block font-bold truncate">${escaparHtml(p.inform_pedido || 'Envío')}</span>
+                <span class="mt-1 block font-bold text-brand-dark truncate">${escaparHtml(p.inform_pedido || 'Envío')}</span>
                 <span class="block text-xs text-brand-textMuted">#${escaparHtml(p.id_pedido)} · ${formatearFechaPedido(p.fecha_pedido)}</span>
               </span>
             </div>
-            <div class="mt-3 pt-3 border-t border-brand-border flex items-center justify-between gap-2 text-sm font-bold ${buscando ? 'text-brand-warning' : 'text-brand-accent'}">
+            <div class="mt-3 pt-3 border-t border-brand-border flex items-center justify-between gap-2 text-sm font-bold ${buscando ? 'text-amber-700' : 'text-brand-accent'}">
               <span>${buscando ? 'Continuar la búsqueda de cadete' : 'Seguir en vivo'}</span>
               ${icono('flecha', 'w-5 h-5')}
             </div>
@@ -203,7 +203,7 @@
         lista.innerHTML = `
           <div class="px-6 py-10 text-center">
             <span class="text-4xl" aria-hidden="true">📦</span>
-            <p class="mt-3 font-bold">${sinPedidos ? 'Todavía no hiciste pedidos' : 'Sin pedidos finalizados'}</p>
+            <p class="mt-3 font-bold text-brand-dark">${sinPedidos ? 'Todavía no hiciste pedidos' : 'Sin pedidos finalizados'}</p>
             <p class="mt-1 text-sm text-brand-textMuted">${sinPedidos ? 'Cuando pidas un envío lo vas a ver acá.' : 'Tus pedidos entregados y cancelados van a aparecer acá.'}</p>
           </div>`;
         return;
@@ -213,14 +213,14 @@
         const estado = estadoUI(p);
         return `
           <a href="${urlPedido(p.id_pedido)}"
-            class="flex items-center gap-3 px-4 py-3.5 hover:bg-brand-surfaceLight/60 active:bg-brand-surfaceLight transition-colors">
+            class="flex items-center gap-3 px-4 py-3.5 hover:bg-brand-surfaceLight active:bg-brand-surfaceHover transition-colors">
             <span class="w-11 h-11 rounded-2xl bg-brand-surfaceLight flex items-center justify-center text-xl shrink-0" aria-hidden="true">${emojiPaquete(p.tipo_paquete)}</span>
             <span class="flex-1 min-w-0">
-              <span class="block text-sm font-bold truncate">${escaparHtml(p.inform_pedido || 'Envío')}</span>
+              <span class="block text-sm font-bold text-brand-dark truncate">${escaparHtml(p.inform_pedido || 'Envío')}</span>
               <span class="block text-xs text-brand-textMuted truncate">${formatearFechaPedido(p.fecha_pedido)} · #${escaparHtml(p.id_pedido)}</span>
             </span>
             <span class="text-right shrink-0">
-              <span class="block text-sm font-extrabold">${formatearPesos(p.coste_pedido)}</span>
+              <span class="block text-sm font-extrabold text-brand-dark">${formatearPesos(p.coste_pedido)}</span>
               <span class="inline-flex mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-bold ${estado.clases}">${escaparHtml(estado.texto)}</span>
             </span>
           </a>`;

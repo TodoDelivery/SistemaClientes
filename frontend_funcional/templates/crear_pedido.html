@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#090B10" />
+  <meta name="theme-color" content="#FF5A1F" />
   <title>Todo Delivery - Pedir envío</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
-<body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
+<body class="font-sans antialiased selection:bg-brand-accent/20 selection:text-brand-dark">
 
   <header id="appBar"></header>
 
@@ -45,7 +45,7 @@
     <form id="formCrearPedido" novalidate class="space-y-4">
 
       <!-- 1. RUTA: MAPA + PUNTOS -->
-      <section class="bg-brand-surface border border-brand-border rounded-3xl overflow-hidden" aria-labelledby="tituloRuta">
+      <section class="bg-brand-surface border border-brand-border rounded-3xl overflow-hidden shadow-card" aria-labelledby="tituloRuta">
         <h2 id="tituloRuta" class="sr-only">Retiro y entrega</h2>
 
         <div class="relative isolate h-[42dvh] min-h-[260px] max-h-[420px]">
@@ -54,7 +54,7 @@
           <!-- Buscador de direcciones -->
           <div id="zonaBusqueda" class="absolute top-3 inset-x-3 z-[500]">
             <div role="search"
-              class="flex items-center gap-2 h-12 pl-3.5 pr-1.5 rounded-2xl bg-brand-surface/95 backdrop-blur-xl border border-brand-border shadow-xl focus-within:border-brand-accent">
+              class="flex items-center gap-2 h-12 pl-3.5 pr-1.5 rounded-2xl bg-brand-surface/95 backdrop-blur-xl border border-brand-border shadow-md focus-within:border-brand-accent">
               <svg class="w-5 h-5 text-brand-textMuted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="7" />
@@ -63,12 +63,12 @@
               <label for="inpBuscarDireccion" class="sr-only">Buscar dirección</label>
               <input id="inpBuscarDireccion" type="search" enterkeyhint="search" autocomplete="off"
                 aria-controls="resultadosBusqueda"
-                class="flex-1 min-w-0 h-full bg-transparent text-base text-white placeholder:text-brand-textMuted focus:outline-none" />
+                class="flex-1 min-w-0 h-full bg-transparent text-base text-brand-dark placeholder:text-brand-textMuted focus:outline-none" />
               <button id="btnBuscarDireccion" type="button"
-                class="h-9 px-3.5 rounded-xl bg-brand-accent text-brand-bg text-sm font-extrabold shrink-0 disabled:opacity-60">Buscar</button>
+                class="h-9 px-3.5 rounded-xl bg-brand-accent text-white font-extrabold text-sm shadow-sm hover:bg-brand-accentHover shrink-0 disabled:opacity-60 transition-colors">Buscar</button>
             </div>
             <ul id="resultadosBusqueda"
-              class="hidden mt-2 max-h-60 overflow-y-auto rounded-2xl bg-brand-surface border border-brand-border shadow-2xl divide-y divide-brand-border"></ul>
+              class="hidden mt-2 max-h-60 overflow-y-auto rounded-2xl bg-brand-surface border border-brand-border shadow-xl divide-y divide-brand-border"></ul>
           </div>
 
           <p id="pistaMapa"
@@ -123,8 +123,8 @@
       </section>
 
       <!-- 2. QUÉ SE ENVÍA -->
-      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-4" aria-labelledby="tituloEnvio">
-        <h2 id="tituloEnvio" class="text-base font-extrabold">¿Qué enviamos?</h2>
+      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-4 shadow-card" aria-labelledby="tituloEnvio">
+        <h2 id="tituloEnvio" class="text-base font-extrabold text-brand-dark">¿Qué enviamos?</h2>
 
         <!-- min-w-0: un fieldset no se achica por debajo de su contenido y rompería el scroll de los chips -->
         <fieldset class="min-w-0">
@@ -133,53 +133,53 @@
         </fieldset>
 
         <div>
-          <label for="inpInformPedido" class="block text-sm font-bold mb-1.5">Detalle o comercio</label>
+          <label for="inpInformPedido" class="block text-sm font-bold text-brand-dark mb-1.5">Detalle o comercio</label>
           <input id="inpInformPedido" type="text" maxlength="200" autocomplete="off" enterkeyhint="done"
             placeholder="Ej: 1 docena de empanadas" aria-describedby="errorInform"
-            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-white placeholder:text-brand-textMuted/70 focus:outline-none focus:border-brand-accent aria-[invalid=true]:border-brand-danger" />
+            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-brand-dark placeholder:text-brand-textMuted/70 focus:outline-none focus:bg-white focus:border-brand-accent aria-[invalid=true]:border-brand-danger transition-colors" />
           <p id="errorInform" class="hidden mt-1.5 text-sm font-semibold text-brand-danger"></p>
         </div>
       </section>
 
       <!-- 3. TARIFA -->
-      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4" aria-labelledby="tituloTarifa">
+      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 shadow-card" aria-labelledby="tituloTarifa">
         <div class="flex items-center justify-between gap-2">
-          <h2 id="tituloTarifa" class="text-base font-extrabold">Tarifa</h2>
+          <h2 id="tituloTarifa" class="text-base font-extrabold text-brand-dark">Tarifa</h2>
           <span id="badgeTarifa" class="px-2.5 py-1 rounded-full text-xs font-bold"></span>
         </div>
         <dl class="mt-3 space-y-2 text-sm">
           <div class="flex justify-between gap-3">
             <dt class="text-brand-textMuted">Bajada de bandera</dt>
-            <dd id="cotizBajadaBandera" class="font-semibold"></dd>
+            <dd id="cotizBajadaBandera" class="font-semibold text-brand-dark"></dd>
           </div>
           <div class="flex justify-between gap-3">
             <dt class="text-brand-textMuted">Distancia <span id="cotizDistKm"></span></dt>
-            <dd id="cotizCostoDistancia" class="font-semibold"></dd>
+            <dd id="cotizCostoDistancia" class="font-semibold text-brand-dark"></dd>
           </div>
           <div class="flex justify-between gap-3">
             <dt class="text-brand-textMuted">Recargo nocturno <span id="cotizPorcNocturno"></span></dt>
-            <dd id="cotizTarifaNocturna" class="font-semibold"></dd>
+            <dd id="cotizTarifaNocturna" class="font-semibold text-brand-dark"></dd>
           </div>
           <div class="flex justify-between gap-3 pt-2 border-t border-brand-border">
-            <dt class="font-bold">Total</dt>
-            <dd id="cotizTotal" class="font-black text-brand-accent"></dd>
+            <dt class="font-bold text-brand-dark">Total</dt>
+            <dd id="cotizTotal" class="font-black text-brand-accent text-lg"></dd>
           </div>
         </dl>
         <p class="mt-3 text-xs text-brand-textMuted">💵 Se paga en efectivo al cadete. La distancia se estima en línea recta.</p>
-        <p id="labelSimulacionNocturna" class="hidden mt-2 text-xs font-mono text-amber-400">DEV: tarifa nocturna simulada</p>
+        <p id="labelSimulacionNocturna" class="hidden mt-2 text-xs font-mono text-amber-500">DEV: tarifa nocturna simulada</p>
       </section>
     </form>
   </main>
 
   <!-- Barra de acción fija sobre la navegación -->
   <div id="barraAccion" class="hidden fixed inset-x-0 sobre-nav z-[1050] px-4 pb-3 pointer-events-none">
-    <div class="pointer-events-auto mx-auto max-w-xl flex items-center gap-3 p-2.5 pl-4 rounded-2xl bg-brand-surface/95 backdrop-blur-xl border border-brand-border shadow-2xl">
+    <div class="pointer-events-auto mx-auto max-w-xl flex items-center gap-3 p-2.5 pl-4 rounded-2xl bg-white/95 backdrop-blur-xl border border-brand-border shadow-xl">
       <div class="min-w-0 flex-1">
         <p id="accionDetalle" class="text-xs font-semibold text-brand-textMuted truncate"></p>
-        <p id="accionTotal" class="text-xl font-black tracking-tight"></p>
+        <p id="accionTotal" class="text-xl font-black text-brand-dark tracking-tight"></p>
       </div>
       <button id="btnCrearPedido" type="submit" form="formCrearPedido"
-        class="h-12 px-5 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm flex items-center gap-2 shadow-lg shadow-brand-accent/20 active:scale-[0.98] transition-transform disabled:opacity-70 shrink-0">
+        class="h-12 px-5 rounded-xl bg-brand-accent text-white font-extrabold text-sm flex items-center gap-2 shadow-btn hover:shadow-btn-hover active:scale-[0.98] transition-all disabled:opacity-70 shrink-0">
       </button>
     </div>
   </div>
@@ -323,7 +323,7 @@
       $('chipsTipoPaquete').innerHTML = TIPOS_PAQUETE.map((t, i) => `
         <label class="relative shrink-0 cursor-pointer">
           <input type="radio" name="tipoPaquete" value="${t.valor}" class="peer sr-only" ${i === 0 ? 'checked' : ''} />
-          <span class="flex items-center gap-2 h-11 px-4 rounded-full border border-brand-border bg-brand-surfaceLight text-sm font-bold text-brand-textMuted transition-colors peer-checked:bg-brand-accent peer-checked:border-brand-accent peer-checked:text-brand-bg peer-focus-visible:ring-2 peer-focus-visible:ring-brand-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-brand-surface">
+          <span class="flex items-center gap-2 h-11 px-4 rounded-full border border-brand-border bg-brand-surfaceLight text-sm font-bold text-brand-textMuted transition-all peer-checked:bg-brand-accent peer-checked:border-brand-accent peer-checked:text-white peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-brand-accent peer-focus-visible:ring-offset-2">
             <span aria-hidden="true">${t.emoji}</span>${t.texto}
           </span>
         </label>
@@ -405,7 +405,7 @@
       if (routeLine) {
         routeLine.setLatLngs(latlngs);
       } else {
-        routeLine = L.polyline(latlngs, { color: '#00E58F', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(pickerMap);
+        routeLine = L.polyline(latlngs, { color: '#FF5A1F', weight: 4, dashArray: '8, 8', opacity: 0.9 }).addTo(pickerMap);
       }
     }
 
@@ -755,7 +755,7 @@
       const porc = porcentajeNocturno();
 
       const badge = $('badgeTarifa');
-      badge.className = `px-2.5 py-1 rounded-full text-xs font-bold ${nocturno ? 'bg-amber-500/15 text-amber-300' : 'bg-brand-surfaceLight text-brand-textMuted'}`;
+      badge.className = `px-2.5 py-1 rounded-full text-xs font-bold ${nocturno ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-brand-surfaceLight text-brand-textMuted border border-brand-border'}`;
       badge.textContent = nocturno ? `🌙 Nocturna +${porc}%` : 'Tarifa estándar';
       $('cotizBajadaBandera').textContent = formatearPesos(datosCotiz.bajada_band);
       $('cotizPorcNocturno').textContent = `(${porc}%)`;

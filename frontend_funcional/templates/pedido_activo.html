@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#090B10" />
+  <meta name="theme-color" content="#FF5A1F" />
   <title>Todo Delivery - Seguimiento</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
-<body class="font-sans antialiased selection:bg-brand-accent selection:text-black">
+<body class="font-sans antialiased selection:bg-brand-accent selection:text-white">
 
   <header id="appBar"></header>
 
@@ -43,23 +43,23 @@
 
     <!-- Sin pedido -->
     <section id="noActiveOrderState" class="hidden min-h-[60dvh] flex flex-col items-center justify-center text-center px-6">
-      <div class="w-20 h-20 rounded-3xl bg-brand-surface border border-brand-border flex items-center justify-center text-4xl" aria-hidden="true">📡</div>
-      <h2 id="tituloSinPedido" class="mt-5 text-xl font-extrabold">No tenés pedidos en curso</h2>
+      <div class="w-20 h-20 rounded-3xl bg-brand-surface border border-brand-border shadow-card flex items-center justify-center text-4xl" aria-hidden="true">📡</div>
+      <h2 id="tituloSinPedido" class="mt-5 text-xl font-extrabold text-brand-dark">No tenés pedidos en curso</h2>
       <p id="textoSinPedido" class="mt-2 text-sm text-brand-textMuted max-w-xs">
         Cuando pidas un envío vas a poder seguir a tu cadete en vivo y chatear desde acá.
       </p>
       <a href="crear_pedido.html"
-        class="mt-6 h-12 px-6 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm flex items-center">Pedir un envío</a>
+        class="mt-6 h-12 px-6 rounded-xl bg-brand-accent text-white font-extrabold text-sm flex items-center shadow-btn hover:bg-brand-accentHover transition-colors">Pedir un envío</a>
     </section>
 
     <div id="trackingPanel" class="hidden flex flex-col gap-4">
 
       <!-- Mapa: retiro, entrega y cadete -->
       <section id="contenedorMapaSeguimiento" aria-label="Mapa del recorrido"
-        class="relative isolate h-[34dvh] min-h-[220px] max-h-[340px] rounded-3xl overflow-hidden border border-brand-border bg-brand-bg">
+        class="relative isolate h-[34dvh] min-h-[220px] max-h-[340px] rounded-3xl overflow-hidden border border-brand-border bg-slate-100 shadow-card">
         <div id="mapaSeguimiento" class="absolute inset-0"></div>
         <button id="btnCentrarMapa" type="button" aria-label="Centrar el mapa en el recorrido" title="Centrar mapa"
-          class="absolute bottom-3 right-3 z-[500] w-11 h-11 rounded-full bg-brand-surface/95 backdrop-blur border border-brand-border text-white flex items-center justify-center shadow-xl">
+          class="absolute bottom-3 right-3 z-[500] w-11 h-11 rounded-full bg-white/95 backdrop-blur border border-brand-border text-brand-dark flex items-center justify-center shadow-md hover:bg-brand-surfaceLight transition-colors">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" />
@@ -69,12 +69,12 @@
       </section>
 
       <!-- Estado del pedido -->
-      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-4" aria-labelledby="tituloEstado">
+      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-4 shadow-card" aria-labelledby="tituloEstado">
         <div class="flex items-start gap-3">
           <div id="iconoEstado" class="relative w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0" aria-hidden="true"></div>
           <div class="min-w-0 flex-1">
             <p class="text-xs font-bold text-brand-textMuted">Pedido <span id="labelIdPedido"></span></p>
-            <h2 id="tituloEstado" class="text-lg font-extrabold leading-snug" aria-live="polite"></h2>
+            <h2 id="tituloEstado" class="text-lg font-extrabold leading-snug text-brand-dark" aria-live="polite"></h2>
             <p id="detalleEstado" class="text-sm text-brand-textMuted"></p>
           </div>
         </div>
@@ -82,31 +82,31 @@
         <ol id="pasosPedido" class="grid grid-cols-4 gap-1.5" aria-label="Progreso del pedido"></ol>
 
         <p id="avisoBusqueda"
-          class="hidden flex items-center gap-2 px-3 py-2.5 rounded-xl bg-brand-warning/10 border border-brand-warning/30 text-brand-warning text-sm font-semibold">
+          class="hidden flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold">
           <span aria-hidden="true">⏳</span>
           <span>Mantené esta pantalla abierta mientras buscamos tu cadete.</span>
         </p>
 
         <button id="btnCancelarPedido" type="button"
-          class="hidden w-full h-12 rounded-xl border border-brand-danger/40 text-brand-danger font-bold text-sm hover:bg-brand-danger/10 transition-colors disabled:opacity-60">
+          class="hidden w-full h-12 rounded-xl border border-brand-danger/30 text-brand-danger font-bold text-sm hover:bg-brand-danger/10 transition-colors disabled:opacity-60">
           Cancelar pedido
         </button>
 
         <div id="accionesFinales" class="hidden grid grid-cols-2 gap-2">
           <a href="crear_pedido.html"
-            class="h-12 rounded-xl bg-brand-accent text-brand-bg font-extrabold text-sm flex items-center justify-center">Pedir otro envío</a>
+            class="h-12 rounded-xl bg-brand-accent text-white font-extrabold text-sm flex items-center justify-center shadow-btn hover:bg-brand-accentHover transition-colors">Pedir otro envío</a>
           <a href="dashboard.html"
-            class="h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm flex items-center justify-center">Mis pedidos</a>
+            class="h-12 rounded-xl bg-white border border-brand-border text-brand-dark font-bold text-sm flex items-center justify-center hover:bg-brand-surfaceLight transition-colors">Mis pedidos</a>
         </div>
       </section>
 
       <!-- Cadete asignado -->
-      <section id="tarjetaCadete" class="hidden bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-3" aria-labelledby="cadeteNombreText">
+      <section id="tarjetaCadete" class="hidden bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-3 shadow-card" aria-labelledby="cadeteNombreText">
         <div class="flex items-center gap-3">
           <div id="cadeteAvatarInitials" class="w-12 h-12 rounded-2xl bg-brand-accent/15 text-brand-accent font-black flex items-center justify-center shrink-0"></div>
           <div class="min-w-0 flex-1">
             <p class="text-xs font-bold text-brand-textMuted">Tu cadete</p>
-            <h2 id="cadeteNombreText" class="text-base font-extrabold truncate"></h2>
+            <h2 id="cadeteNombreText" class="text-base font-extrabold text-brand-dark truncate"></h2>
             <p id="cadeteVehiculo" class="text-sm text-brand-textMuted truncate"></p>
           </div>
           <!-- Chapa patente argentina -->
@@ -116,14 +116,14 @@
           </div>
         </div>
 
-        <div class="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-brand-surfaceLight/60 text-sm">
+        <div class="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-brand-surfaceLight/80 border border-brand-border/40 text-sm">
           <span id="cadeteGpsStatus" class="flex items-center gap-2 min-w-0 truncate text-brand-textMuted"></span>
           <span id="telemetriaVelocidad" class="font-bold text-brand-accent shrink-0"></span>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <a id="btnLlamarCadete" href="#"
-            class="hidden h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm flex items-center justify-center gap-2 hover:border-brand-accent/60 transition-colors">
+            class="hidden h-12 rounded-xl bg-white border border-brand-border text-brand-dark font-bold text-sm flex items-center justify-center gap-2 hover:border-brand-accent/60 transition-colors">
             <svg class="w-5 h-5 text-brand-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z" />
@@ -131,36 +131,36 @@
             Llamar
           </a>
           <button id="btnIrAlChat" type="button"
-            class="col-span-2 h-12 rounded-xl bg-brand-surfaceLight border border-brand-border font-bold text-sm flex items-center justify-center gap-2 hover:border-brand-accent/60 transition-colors">
+            class="col-span-2 h-12 rounded-xl bg-white border border-brand-border text-brand-dark font-bold text-sm flex items-center justify-center gap-2 hover:border-brand-accent/60 transition-colors">
             <svg class="w-5 h-5 text-brand-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
             </svg>
             Chat
-            <span id="badgeNoLeidos" class="hidden min-w-5 h-5 px-1.5 rounded-full bg-brand-accent text-brand-bg text-xs font-black items-center justify-center"></span>
+            <span id="badgeNoLeidos" class="hidden min-w-5 h-5 px-1.5 rounded-full bg-brand-accent text-white text-xs font-black items-center justify-center"></span>
           </button>
         </div>
       </section>
 
       <!-- Detalle del pedido -->
-      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4" aria-label="Detalle del pedido">
+      <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 shadow-card" aria-label="Detalle del pedido">
         <div class="flex items-start gap-3">
           <span id="emojiPaquete" class="w-11 h-11 rounded-2xl bg-brand-surfaceLight flex items-center justify-center text-xl shrink-0" aria-hidden="true"></span>
           <div class="min-w-0 flex-1">
-            <p id="labelInformPedido" class="font-bold break-words"></p>
+            <p id="labelInformPedido" class="font-bold text-brand-dark break-words"></p>
             <p id="labelTipoFecha" class="text-sm text-brand-textMuted"></p>
           </div>
           <div class="text-right shrink-0">
-            <p id="labelCostePedido" class="text-lg font-black"></p>
+            <p id="labelCostePedido" class="text-lg font-black text-brand-dark"></p>
             <p class="text-xs text-brand-textMuted">Efectivo</p>
           </div>
         </div>
       </section>
 
       <!-- Chat con el cadete -->
-      <section id="tarjetaChat" class="hidden scroll-mt-20 bg-brand-surface border border-brand-border rounded-3xl overflow-hidden" aria-labelledby="tituloChat">
+      <section id="tarjetaChat" class="hidden scroll-mt-20 bg-brand-surface border border-brand-border rounded-3xl overflow-hidden shadow-card" aria-labelledby="tituloChat">
         <div class="px-4 py-3 border-b border-brand-border flex items-center justify-between gap-2">
-          <h2 id="tituloChat" class="text-base font-extrabold">Chat con tu cadete</h2>
+          <h2 id="tituloChat" class="text-base font-extrabold text-brand-dark">Chat con tu cadete</h2>
           <span id="chipCanal" class="text-xs font-semibold px-2 py-0.5 rounded-full"></span>
         </div>
 
@@ -176,9 +176,9 @@
           <label for="clienteChatInput" class="sr-only">Mensaje para el cadete</label>
           <input id="clienteChatInput" type="text" maxlength="500" autocomplete="off" enterkeyhint="send"
             placeholder="Escribí un mensaje..."
-            class="flex-1 min-w-0 h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-white placeholder:text-brand-textMuted/70 focus:outline-none focus:border-brand-accent" />
+            class="flex-1 min-w-0 h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-brand-dark placeholder:text-brand-textMuted/70 focus:outline-none focus:border-brand-accent focus:bg-white transition-colors" />
           <button id="btnEnviarChat" type="submit" aria-label="Enviar mensaje"
-            class="w-12 h-12 rounded-xl bg-brand-accent text-brand-bg flex items-center justify-center shrink-0 active:scale-95 transition-transform disabled:opacity-50">
+            class="w-12 h-12 rounded-xl bg-brand-accent text-white shadow-btn flex items-center justify-center shrink-0 active:scale-95 transition-all hover:bg-brand-accentHover disabled:opacity-50">
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M22 2 11 13" />
@@ -298,7 +298,7 @@
 
       $('respuestasRapidas').innerHTML = RESPUESTAS_RAPIDAS.map(texto => `
         <button type="button" data-rapida
-          class="shrink-0 h-9 px-3.5 rounded-full bg-brand-surfaceLight border border-brand-border text-sm font-semibold text-brand-textMuted hover:text-white hover:border-brand-accent/60 transition-colors">${texto}</button>
+          class="shrink-0 h-9 px-3.5 rounded-full bg-brand-surfaceLight border border-brand-border text-sm font-semibold text-brand-textMuted hover:text-brand-dark hover:border-brand-accent/60 transition-colors">${texto}</button>
       `).join('');
       $('respuestasRapidas').querySelectorAll('[data-rapida]').forEach(btn => {
         btn.addEventListener('click', () => enviarMensajeChat(btn.textContent.trim()));
@@ -483,7 +483,7 @@
         return `
           <li class="min-w-0" ${enCurso ? 'aria-current="step"' : ''}>
             <span class="block h-1.5 rounded-full ${barra}"></span>
-            <span class="mt-1.5 block text-xs font-bold truncate ${hecho || enCurso ? 'text-white' : 'text-brand-textMuted'}">${texto}</span>
+            <span class="mt-1.5 block text-xs font-bold truncate ${hecho || enCurso ? 'text-brand-dark' : 'text-brand-textMuted'}">${texto}</span>
           </li>`;
       }).join('');
     }
@@ -652,9 +652,9 @@
         attribution: '&copy; OSM'
       }).addTo(mapaSeguimiento);
 
-      L.marker(org, { icon: crearIconoMapa('A', 'bg-emerald-500 shadow-emerald-500/40'), interactive: false }).addTo(mapaSeguimiento);
-      L.marker(dest, { icon: crearIconoMapa('B', 'bg-amber-400 shadow-amber-400/40'), interactive: false }).addTo(mapaSeguimiento);
-      L.polyline([org, dest], { color: '#00E58F', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(mapaSeguimiento);
+      L.marker(org, { icon: crearIconoMapa('A', 'bg-emerald-600 text-white shadow-emerald-500/40'), interactive: false }).addTo(mapaSeguimiento);
+      L.marker(dest, { icon: crearIconoMapa('B', 'bg-brand-accent text-white shadow-brand-accent/40'), interactive: false }).addTo(mapaSeguimiento);
+      L.polyline([org, dest], { color: '#FF5A1F', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(mapaSeguimiento);
 
       puntosRuta = [org, dest];
       encuadrarMapa();
@@ -675,7 +675,7 @@
       }
 
       markerCadete = L.marker([lat, lng], {
-        icon: crearIconoMapa('🛵', 'bg-brand-info shadow-blue-500/40', 40),
+        icon: crearIconoMapa('🛵', 'bg-brand-accent text-white shadow-brand-accent/40', 40),
         interactive: false,
         zIndexOffset: 1000
       }).addTo(mapaSeguimiento);
@@ -685,7 +685,7 @@
     function crearIconoMapa(contenido, clasesColor, tamano = 34) {
       return L.divIcon({
         className: '',
-        html: `<div style="width:${tamano}px;height:${tamano}px" class="rounded-full ${clasesColor} border-2 border-white flex items-center justify-center text-black font-black text-sm shadow-lg">${contenido}</div>`,
+        html: `<div style="width:${tamano}px;height:${tamano}px" class="rounded-full ${clasesColor} border-2 border-white flex items-center justify-center font-black text-sm shadow-lg">${contenido}</div>`,
         iconSize: [tamano, tamano],
         iconAnchor: [tamano / 2, tamano / 2]
       });
@@ -835,8 +835,8 @@
 
       const burbuja = document.createElement('div');
       burbuja.className = `max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm break-words whitespace-pre-wrap ${esMio
-        ? 'bg-brand-accent text-brand-bg font-semibold rounded-br-md'
-        : 'bg-brand-surfaceLight border border-brand-border text-white rounded-bl-md'
+        ? 'bg-brand-accent text-white font-semibold rounded-br-md shadow-sm'
+        : 'bg-brand-surfaceLight border border-brand-border text-brand-dark rounded-bl-md'
         }`;
       burbuja.textContent = String(texto ?? '');
 

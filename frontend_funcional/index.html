@@ -1,18 +1,1234 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#090B10" />
-  <title>Todo Delivery</title>
-  <!-- Entrada del sitio: templates/dashboard.html manda a login_google.html si no hay sesión -->
-  <meta http-equiv="refresh" content="0; url=templates/dashboard.html" />
-  <script>window.location.replace('templates/dashboard.html');</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<meta name="theme-color" content="#FF5A1F">
+<meta name="description" content="Todo Delivery Pico Truncado. Seguí tus envíos en tiempo real con tu cuenta de Google.">
+<title>Todo Delivery · Pico Truncado</title>
+<style>
+  :root {
+    --orange: #FF5A1F;
+    --orange-deep: #E14A0F;
+    --orange-soft: #FFB088;
+    --white: #FFFFFF;
+    --ink: #1A1A1A;
+    --grey-bg: #F5F5F5;
+    --grey-text: #8A8A8A;
+
+    --primary: #FF5A1F;
+    --primary-dark: #E14A0F;
+    --primary-light: #FF6D00;
+    --accent-amber: #FFB300;
+    --accent-green: #00897B;
+    --accent-blue: #1E88E5;
+
+    --dark: #111827;
+    --text-muted: #6B7280;
+    --border: #E5E7EB;
+    --border-focus: #CBD5E1;
+    --card-bg: #FFFFFF;
+    --bg: #F8FAFC;
+
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-full: 9999px;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+    --shadow-btn: 0 2px 4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--white);
+    overflow: hidden;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    position: relative;
+    height: 100vh;
+    color: var(--ink);
+  }
+
+  body.modo-registro {
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  /* ================= LOGIN ORIGINAL (Detrás de la cortina) ================= */
+  .login {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 32px 28px;
+    z-index: 1;
+  }
+
+  .login-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 36px;
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  .login-logo svg { width: 26px; height: 26px; flex-shrink: 0; }
+  .login-logo span { font-size: 16px; font-weight: 700; color: var(--ink); }
+
+  .login-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  .login-sub {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--grey-text);
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  .field { margin-top: 22px; opacity: 0; transform: translateY(14px); }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .field input {
+    width: 100%; height: 52px; border: none; border-radius: 10px;
+    background: var(--grey-bg); padding: 0 16px; font-size: 15px; color: var(--ink); outline: none;
+  }
+  .field input:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
+
+  .forgot {
+    margin-top: 12px; font-size: 13px; font-weight: 600; color: var(--orange-deep);
+    align-self: flex-end; opacity: 0; transform: translateY(14px); cursor: pointer;
+  }
+
+  .btn-login {
+    margin-top: 28px; width: 100%; height: 52px; border: none; border-radius: 10px;
+    background: var(--orange); color: var(--white); font-size: 16px; font-weight: 700;
+    opacity: 0; transform: translateY(14px); cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+  }
+  .btn-login:active { background: var(--orange-deep); transform: scale(0.99); }
+
+  .signup {
+    margin-top: 20px; text-align: center; font-size: 13px; color: var(--grey-text);
+    opacity: 0; transform: translateY(14px);
+  }
+  .signup b { color: var(--ink); cursor: pointer; }
+  .signup b:hover { text-decoration: underline; }
+
+  .go .login-logo { animation: riseIn .45s cubic-bezier(.2,.8,.2,1) .05s forwards; }
+  .go .login-title { animation: riseIn .45s cubic-bezier(.2,.8,.2,1) .12s forwards; }
+  .go .login-sub { animation: riseIn .45s cubic-bezier(.2,.8,.2,1) .18s forwards; }
+  .go .field:nth-of-type(1) { animation: riseIn .45s cubic-bezier(.2,.8,.2,1) .26s forwards; }
+  .go .field:nth-of-type(2) { animation: riseIn .45s cubic-bezier(.2,.8,.2,1) .34s forwards; }
+  .go .forgot { animation: riseIn .45s cubic-bezier(.2,.8,.2,1) .40s forwards; }
+  .go .btn-login { animation: riseIn .45s cubic-bezier(.2,.8,.2,1) .48s forwards; }
+  .go .signup { animation: riseIn .45s cubic-bezier(.2,.8,.2,1) .56s forwards; }
+
+  @keyframes riseIn { to { opacity: 1; transform: translateY(0); } }
+
+  /* ================= SPLASH (cortina de viento patagónico) ================= */
+  .curtain {
+    position: fixed; inset: 0; background: var(--orange);
+    display: flex; align-items: center; justify-content: center;
+    will-change: transform; transform: translateY(0);
+    transition: transform .65s cubic-bezier(.65,0,.35,1);
+    z-index: 999;
+  }
+  .curtain.lift { transform: translateY(-100%); pointer-events: none; }
+
+  .mark { display: flex; flex-direction: column; align-items: center; }
+
+  /* Escena: estepa + molino de Pico Truncado */
+  .scene { width: 180px; height: 150px; overflow: visible; }
+
+  .hill {
+    opacity: 0;
+    animation: fadeIn .5s ease-out .05s forwards;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  .blade { opacity: 0; }
+  .blade1 { transform: translate(0,-38px); animation: assemble .45s cubic-bezier(.2,.8,.2,1) .35s forwards; }
+  .blade2 { transform: translate(34px,26px); animation: assemble .45s cubic-bezier(.2,.8,.2,1) .45s forwards; }
+  .blade3 { transform: translate(-34px,26px); animation: assemble .45s cubic-bezier(.2,.8,.2,1) .55s forwards; }
+  @keyframes assemble { to { opacity: 1; transform: translate(0,0); } }
+
+  .rotor {
+    transform-origin: 100px 46px;
+    animation: spin 2.2s linear 1s infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .gust { opacity: 0; animation: gust 2.4s ease-in-out .9s infinite; }
+  .gust2 { animation-delay: 1.4s; }
+  @keyframes gust { 0%,100% { opacity: 0; } 50% { opacity: .55; } }
+
+  .wordmark {
+    margin-top: 14px; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--white);
+    opacity: 0; transform: translateY(8px);
+    animation: riseIn .4s cubic-bezier(.2,.8,.2,1) .95s forwards;
+  }
+  .place {
+    margin-top: 8px; font-size: 14px; font-weight: 700; color: var(--white);
+    opacity: 0; animation: riseIn .4s cubic-bezier(.2,.8,.2,1) 1.08s forwards;
+  }
+  .place-sub {
+    margin-top: 3px; font-size: 12.5px; font-weight: 500; color: var(--orange-soft); text-align: center;
+    max-width: 220px; line-height: 1.4;
+    opacity: 0; animation: riseIn .4s cubic-bezier(.2,.8,.2,1) 1.2s forwards;
+  }
+
+  /* ================= PANTALLA DE REGISTRO INTEGRADA ================= */
+  .registro-wrapper {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: var(--bg);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+
+  .registro-wrapper.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .page-wrapper {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 44% 56%;
+    background: var(--card-bg);
+  }
+
+  /* Panel Visual */
+  .visual-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 48px;
+    background: linear-gradient(155deg, #FF5A1F 0%, #E14A0F 52%, #FF6D00 100%);
+    color: #FFFFFF;
+    overflow: hidden;
+    contain: paint;
+  }
+
+  .deco-shape {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translateZ(0);
+  }
+
+  .deco-shape-1 {
+    width: 320px;
+    height: 320px;
+    top: -60px;
+    right: -80px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  }
+
+  .deco-shape-2 {
+    width: 220px;
+    height: 220px;
+    bottom: 12%;
+    left: -60px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .deco-shape-dots {
+    position: absolute;
+    right: 12%;
+    bottom: 22%;
+    width: 90px;
+    height: 90px;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.3) 2px, transparent 2px);
+    background-size: 14px 14px;
+    transform: rotate(15deg) translateZ(0);
+    opacity: 0.6;
+  }
+
+  .brand {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-mark {
+    width: 44px;
+    height: 44px;
+    background: #FFFFFF;
+    color: var(--primary);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    flex-shrink: 0;
+  }
+
+  .brand-name {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    color: #FFFFFF;
+  }
+
+  .visual-body {
+    position: relative;
+    z-index: 2;
+    max-width: 460px;
+    margin: 40px 0;
+  }
+
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+  }
+
+  .badge-pill-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-amber);
+  }
+
+  .visual-body h1 {
+    font-size: clamp(34px, 3.8vw, 54px);
+    line-height: 1.06;
+    font-weight: 850;
+    letter-spacing: -2px;
+    color: #FFFFFF;
+    margin-bottom: 18px;
+  }
+
+  .visual-body h1 span {
+    color: #FFE082;
+  }
+
+  .visual-body p {
+    font-size: 16px;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.88);
+    max-width: 390px;
+  }
+
+  .benefit-list {
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    list-style: none;
+  }
+
+  .benefit-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 500;
+  }
+
+  .benefit-icon {
+    width: 22px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .benefit-icon svg {
+    width: 13px;
+    height: 13px;
+    fill: #FFFFFF;
+  }
+
+  .visual-footer {
+    position: relative;
+    z-index: 2;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  /* Panel de Autenticación */
+  .auth-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 32px;
+    background: var(--bg);
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--card-bg);
+    padding: 36px 32px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+
+  .btn-volver {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 14px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .btn-volver:hover {
+    background: #F1F5F9;
+    color: var(--dark);
+  }
+
+  .auth-header {
+    text-align: center;
+    margin-bottom: 26px;
+  }
+
+  .auth-header-icon {
+    width: 52px;
+    height: 52px;
+    background: #FFF3E0;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    border: 1px solid #FFE0B2;
+  }
+
+  .auth-header-icon svg {
+    width: 26px;
+    height: 26px;
+    fill: var(--primary);
+  }
+
+  .auth-header h2 {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    color: var(--dark);
+    margin-bottom: 6px;
+  }
+
+  .auth-header p {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+
+  /* Botón Google Oficial */
+  .btn-google {
+    width: 100%;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: #FFFFFF;
+    color: #1F2937;
+    border: 1.5px solid #D1D5DB;
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    font-weight: 650;
+    box-shadow: var(--shadow-btn);
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .btn-google:hover {
+    background-color: #F8FAFC;
+    border-color: #9CA3AF;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+  }
+
+  .btn-google:active {
+    transform: scale(0.985);
+    background-color: #F1F5F9;
+  }
+
+  .btn-google:focus-visible {
+    outline: 3px solid rgba(255, 90, 31, 0.35);
+    border-color: var(--primary);
+  }
+
+  .btn-google.is-loading {
+    pointer-events: none;
+    color: transparent;
+  }
+
+  .google-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .spinner {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border: 2.5px solid rgba(255, 90, 31, 0.25);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    display: none;
+    animation: spin 0.65s linear infinite;
+  }
+
+  .btn-google.is-loading .spinner { display: block; }
+  .btn-google.is-loading .google-icon,
+  .btn-google.is-loading .btn-text { visibility: hidden; }
+
+  .security-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 22px;
+    padding: 12px 14px;
+    background: #F8FAFC;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+
+  .security-note svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    fill: var(--accent-green);
+    margin-top: 1px;
+  }
+
+  .terms {
+    margin-top: 22px;
+    text-align: center;
+    font-size: 11.5px;
+    color: #9CA3AF;
+    line-height: 1.5;
+  }
+
+  .terms a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .terms a:hover { text-decoration: underline; }
+
+  .brand-accent-bar {
+    display: flex;
+    gap: 5px;
+    margin-top: 26px;
+  }
+
+  .brand-accent-bar span {
+    height: 3.5px;
+    flex: 1;
+    border-radius: var(--radius-full);
+  }
+
+  .brand-accent-bar span:nth-child(1) { background: var(--primary); }
+  .brand-accent-bar span:nth-child(2) { background: var(--accent-amber); }
+  .brand-accent-bar span:nth-child(3) { background: var(--accent-green); }
+  .brand-accent-bar span:nth-child(4) { background: var(--accent-blue); }
+
+  .status-alert {
+    margin-top: 14px;
+    margin-bottom: 8px;
+    padding: 10px 14px;
+    background: #FEF3C7;
+    border: 1px solid #FDE68A;
+    color: #92400E;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    display: none;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .status-alert.is-error {
+    background: #FEE2E2;
+    border-color: #FCA5A5;
+    color: #991B1B;
+  }
+
+  .status-alert.is-info {
+    background: #EFF6FF;
+    border-color: #BFDBFE;
+    color: #1E40AF;
+  }
+
+  /* Formulario Perfil (Primer Ingreso) */
+  .auth-perfil {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 8px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+  }
+
+  .form-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--dark);
+  }
+
+  .form-input {
+    width: 100%;
+    height: 48px;
+    padding: 0 16px;
+    background: #F8FAFC;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    color: var(--dark);
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+
+  .form-input:focus {
+    background: #FFFFFF;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.18);
+  }
+
+  .form-help {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .btn-submit-perfil {
+    width: 100%;
+    min-height: 50px;
+    margin-top: 6px;
+    background: var(--primary);
+    color: #FFFFFF;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(255, 90, 31, 0.28);
+    transition: transform 0.12s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-submit-perfil:hover {
+    background: var(--primary-dark);
+    box-shadow: 0 6px 18px rgba(255, 90, 31, 0.35);
+  }
+
+  .btn-submit-perfil:active { transform: scale(0.985); }
+  .btn-submit-perfil:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .btn-cancel-perfil {
+    width: 100%;
+    height: 40px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s ease;
+  }
+  .btn-cancel-perfil:hover { color: var(--dark); }
+
+  @media (max-width: 860px) {
+    .page-wrapper {
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
+
+    .visual-panel {
+      min-height: auto;
+      padding: 32px 24px 28px;
+    }
+
+    .visual-body { margin: 20px 0 0; }
+    .visual-body h1 { font-size: 28px; letter-spacing: -1px; }
+    .visual-body p, .benefit-list, .visual-footer, .deco-shape-2, .deco-shape-dots { display: none; }
+
+    .deco-shape-1 {
+      width: 180px;
+      height: 180px;
+      top: -40px;
+      right: -40px;
+    }
+
+    .auth-panel {
+      padding: 24px 16px 40px;
+      background: var(--card-bg);
+    }
+
+    .auth-card {
+      max-width: 440px;
+      padding: 24px 18px;
+      border: none;
+      box-shadow: none;
+    }
+
+    .auth-header { margin-bottom: 22px; }
+    .auth-header-icon { width: 48px; height: 48px; margin-bottom: 12px; }
+    .auth-header h2 { font-size: 22px; }
+  }
+
+  @media (max-width: 360px) {
+    .btn-google { font-size: 14px; gap: 10px; }
+    .brand-name { font-size: 20px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hill, .blade, .wordmark, .place, .place-sub,
+    .login-logo, .login-title, .login-sub, .field, .forgot, .btn-login, .signup {
+      animation: none !important; opacity: 1 !important; transform: none !important;
+    }
+    .rotor { animation: none !important; }
+    .gust { display: none; }
+    .curtain { display: none; }
+  }
+</style>
 </head>
+<body>
 
-<body style="background:#090B10;color:#fff;font-family:sans-serif">
-  <a href="templates/dashboard.html" style="color:#00E58F">Entrar a Todo Delivery</a>
+  <!-- ========================================================
+       PANTALLA INICIAL / CONSULTA (Detrás de la cortina)
+       ======================================================== -->
+  <div class="login" id="login">
+    <div class="login-logo">
+      <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 8 L8 16 L16 16" fill="none" stroke="#FF5A1F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M32 32 L32 24 L24 24" fill="none" stroke="#FF5A1F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="20" r="3" fill="#FF5A1F"/>
+      </svg>
+      <span>Todo Delivery</span>
+    </div>
+
+    <div class="login-title">Bienvenido de nuevo</div>
+    <div class="login-sub">Ingresa para seguir tus envíos.</div>
+
+    <div class="field">
+      <label for="phone">Teléfono o correo</label>
+      <input id="phone" type="text" inputmode="email" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="pass">Contraseña</label>
+      <input id="pass" type="password" autocomplete="current-password">
+    </div>
+
+    <button class="btn-login" id="btnIniciarSesion" type="button">Iniciar sesión</button>
+    <div class="signup">¿Aún no tienes cuenta? <a href="#" id="linkRegistrate" style="color: inherit; text-decoration: none;"><b>Regístrate</b></a></div>
+  </div>
+
+  <!-- ========================================================
+       SPLASH: cortina patagónica con molino eólico de Pico Truncado
+       ======================================================== -->
+  <div class="curtain" id="curtain">
+    <div class="mark">
+      <svg class="scene" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+        <!-- rachas de viento -->
+        <g stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" fill="none">
+          <path class="gust" d="M18 40 L42 40"/>
+          <path class="gust gust2" d="M14 52 L36 52"/>
+        </g>
+
+        <!-- estepa patagónica -->
+        <path class="hill" d="M0 130 C 40 108, 80 122, 100 116 C 130 108, 160 122, 200 112 L200 150 L0 150 Z"
+              fill="#FFFFFF" opacity="0.95"/>
+
+        <!-- molino: torre + buje -->
+        <line x1="100" y1="116" x2="100" y2="46" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+
+        <g class="rotor">
+          <g class="blade blade1">
+            <path d="M100 46 L96 10 C 100 6, 104 6, 100 12 Z" fill="#FFFFFF"/>
+          </g>
+          <g class="blade blade2">
+            <path d="M100 46 L128 62 C 132 58, 130 54, 124 58 Z" fill="#FFFFFF"/>
+          </g>
+          <g class="blade blade3">
+            <path d="M100 46 L72 62 C 68 58, 70 54, 76 58 Z" fill="#FFFFFF"/>
+          </g>
+          <circle cx="100" cy="46" r="5" fill="#FFFFFF"/>
+        </g>
+      </svg>
+
+      <div class="wordmark">Todo Delivery</div>
+      <div class="place">Pico Truncado, Santa Cruz</div>
+      <div class="place-sub">Hecha en la tierra donde el viento patagónico nunca se detiene.</div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       SECCIÓN DE REGISTRO E INGRESO CON GOOGLE INTEGRADA
+       ======================================================== -->
+  <div class="registro-wrapper" id="seccionRegistro" aria-hidden="true">
+    <main class="page-wrapper">
+
+      <!-- Panel Visual / Identidad de marca -->
+      <section class="visual-panel" aria-label="Información de TodoDelivery">
+        <div class="deco-shape deco-shape-1" aria-hidden="true"></div>
+        <div class="deco-shape deco-shape-2" aria-hidden="true"></div>
+        <div class="deco-shape deco-shape-dots" aria-hidden="true"></div>
+
+        <header class="brand">
+          <div class="brand-mark" aria-hidden="true">TD</div>
+          <span class="brand-name">TodoDelivery</span>
+        </header>
+
+        <div class="visual-body">
+          <div class="badge-pill">
+            <span class="badge-pill-dot"></span>
+            Todo cerca • Todo fácil
+          </div>
+
+          <h1>
+            Pedí en segundos, <span>sin contraseñas.</span>
+          </h1>
+
+          <p>
+            Conectá directo con tus restaurantes y comercios preferidos. Con tu cuenta de Google ingresás al instante desde cualquier teléfono.
+          </p>
+
+          <ul class="benefit-list" role="list">
+            <li class="benefit-item">
+              <span class="benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              </span>
+              <span>Inicio inmediato en 1 solo clic</span>
+            </li>
+            <li class="benefit-item">
+              <span class="benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              </span>
+              <span>Seguridad respaldada por Google</span>
+            </li>
+            <li class="benefit-item">
+              <span class="benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+              </span>
+              <span>Seguimiento de pedidos en tiempo real</span>
+            </li>
+          </ul>
+        </div>
+
+        <footer class="visual-footer">
+          © 2026 TodoDelivery. Todos los derechos reservados.
+        </footer>
+      </section>
+
+      <!-- Panel de Autenticación Google -->
+      <section class="auth-panel" aria-label="Ingreso con Google">
+        <div class="auth-card">
+
+          <button type="button" id="btnVolverInicio" class="btn-volver" aria-label="Volver a la pantalla anterior">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            <span>Volver</span>
+          </button>
+
+          <header class="auth-header">
+            <div class="auth-header-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M19 7h-3V6a4 4 0 0 0-8 0v1H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zm-9-1a2 2 0 0 1 4 0v1h-4V6zm9 13H5V9h14v10z"/>
+              </svg>
+            </div>
+
+            <h2 id="authTitle">Comenzar a pedir</h2>
+            <p id="authSubtitle">Elegí tu cuenta de Google para iniciar sesión o registrarte automáticamente.</p>
+          </header>
+
+          <!-- Mensaje de estado accesible -->
+          <div id="statusAlert" class="status-alert" role="status" aria-live="polite"></div>
+
+          <!-- PASO LOGIN GOOGLE -->
+          <div id="pasoLogin">
+            <div class="auth-action">
+              <button 
+                type="button" 
+                id="googleSignInBtn" 
+                class="btn-google" 
+                aria-label="Continuar con Google"
+              >
+                <!-- SVG oficial Google -->
+                <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+
+                <span class="btn-text">Continuar con Google</span>
+                <div class="spinner" aria-hidden="true"></div>
+              </button>
+            </div>
+
+            <div class="security-note">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+              </svg>
+              <div>
+                <strong>Sin contraseñas.</strong> Tu cuenta se sincroniza automáticamente con tu correo y tus datos viajan cifrados.
+              </div>
+            </div>
+
+            <p class="terms">
+              Al continuar, aceptás los <a href="#terminos">Términos de servicio</a> y la <a href="#privacidad">Política de privacidad</a> de TodoDelivery.
+            </p>
+          </div>
+
+          <!-- PASO PERFIL (PRIMER INGRESO) -->
+          <form id="pasoPerfil" class="auth-perfil" style="display: none;">
+            <div class="form-group">
+              <label for="inpNombre" class="form-label">Nombre completo</label>
+              <input id="inpNombre" type="text" required maxlength="80" autocomplete="name" class="form-input" placeholder="Tu nombre y apellido" />
+            </div>
+
+            <div class="form-group">
+              <label for="inpTelefono" class="form-label">Teléfono de contacto</label>
+              <input id="inpTelefono" type="tel" required inputmode="tel" autocomplete="tel" placeholder="Ej: 2974123456" class="form-input" />
+              <p class="form-help">Con característica, sin 0 ni 15. El cadete lo usará si necesita contactarte.</p>
+            </div>
+
+            <button id="btnGuardarPerfil" type="submit" class="btn-submit-perfil">
+              Guardar y continuar
+            </button>
+
+            <button id="btnOtraCuenta" type="button" class="btn-cancel-perfil">
+              Usar otra cuenta de Google
+            </button>
+          </form>
+
+          <div class="brand-accent-bar" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========================================================
+       LÓGICA: SESIÓN, SPLASH Y AUTENTICACIÓN GOOGLE
+       ======================================================== -->
+  <script type="module">
+    let conexionMod, sesionMod;
+    try {
+      conexionMod = await import('./scripts/conexion_supabase.js');
+      sesionMod = await import('./scripts/sesion_cliente.js');
+    } catch (e) {
+      conexionMod = await import('../scripts/conexion_supabase.js');
+      sesionMod = await import('../scripts/sesion_cliente.js');
+    }
+
+    const { supabase } = conexionMod;
+    const { PAGINAS, nombreVisible, obtenerFilaCliente, registrarCliente, validarTelefono } = sesionMod;
+
+    const curtain = document.getElementById('curtain');
+    const loginView = document.getElementById('login');
+    const seccionRegistro = document.getElementById('seccionRegistro');
+    const btnIniciarSesion = document.getElementById('btnIniciarSesion');
+    const linkRegistrate = document.getElementById('linkRegistrate');
+    const btnVolverInicio = document.getElementById('btnVolverInicio');
+
+    const googleBtn = document.getElementById('googleSignInBtn');
+    const statusAlert = document.getElementById('statusAlert');
+    const pasoLogin = document.getElementById('pasoLogin');
+    const pasoPerfil = document.getElementById('pasoPerfil');
+    const authTitle = document.getElementById('authTitle');
+    const authSubtitle = document.getElementById('authSubtitle');
+    const inpNombre = document.getElementById('inpNombre');
+    const inpTelefono = document.getElementById('inpTelefono');
+    const btnGuardarPerfil = document.getElementById('btnGuardarPerfil');
+    const btnOtraCuenta = document.getElementById('btnOtraCuenta');
+
+    let idUsuarioEnProceso = null;
+    let usuarioSinPerfil = null;
+    let navegando = false;
+
+    function obtenerRutaDashboard() {
+      return window.location.pathname.includes('/templates/') 
+        ? PAGINAS.dashboard 
+        : `templates/${PAGINAS.dashboard}`;
+    }
+
+    function mostrarRegistro(modo = 'login') {
+      if (modo === 'login') {
+        authTitle.textContent = "Iniciar sesión";
+        authSubtitle.textContent = "Elegí tu cuenta de Google para ingresar a tu cuenta.";
+      } else {
+        authTitle.textContent = "Comenzar a pedir";
+        authSubtitle.textContent = "Elegí tu cuenta de Google para registrarte en segundos sin contraseñas.";
+      }
+      mostrarPaso('login');
+      seccionRegistro.classList.add('visible');
+      seccionRegistro.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modo-registro');
+    }
+
+    function ocultarRegistro() {
+      seccionRegistro.classList.remove('visible');
+      seccionRegistro.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modo-registro');
+    }
+
+    btnIniciarSesion?.addEventListener('click', () => mostrarRegistro('login'));
+    linkRegistrate?.addEventListener('click', (e) => {
+      e.preventDefault();
+      mostrarRegistro('registro');
+    });
+    btnVolverInicio?.addEventListener('click', ocultarRegistro);
+
+    function setLoadingState(isLoading, message = "", isError = false) {
+      if (isLoading) {
+        googleBtn.classList.add("is-loading");
+        googleBtn.setAttribute("aria-busy", "true");
+        googleBtn.disabled = true;
+      } else {
+        googleBtn.classList.remove("is-loading");
+        googleBtn.removeAttribute("aria-busy");
+        googleBtn.disabled = false;
+      }
+
+      if (message) {
+        statusAlert.textContent = message;
+        statusAlert.className = isError ? "status-alert is-error" : "status-alert is-info";
+        statusAlert.style.display = "block";
+      } else {
+        statusAlert.style.display = "none";
+        statusAlert.className = "status-alert";
+      }
+    }
+
+    function mostrarPaso(nombre) {
+      if (nombre === 'login') {
+        pasoLogin.style.display = 'block';
+        pasoPerfil.style.display = 'none';
+        setLoadingState(false);
+      } else if (nombre === 'perfil') {
+        pasoLogin.style.display = 'none';
+        pasoPerfil.style.display = 'flex';
+        authTitle.textContent = "Completá tu perfil";
+        authSubtitle.textContent = "El cadete va a usar tu teléfono si necesita contactarte.";
+        statusAlert.style.display = "none";
+      }
+    }
+
+    async function continuarConUsuario(user) {
+      if (idUsuarioEnProceso === user.id) return;
+      idUsuarioEnProceso = user.id;
+      limpiarParametrosOAuth();
+
+      try {
+        const fila = await obtenerFilaCliente(user.id);
+        if (fila) {
+          // Sesión activa y registrada -> ir directo al dashboard
+          navegando = true;
+          window.location.replace(obtenerRutaDashboard());
+          return;
+        }
+
+        // Primer ingreso: se autenticó pero aún no completó nombre/teléfono
+        curtain.classList.add('lift');
+        mostrarRegistro('registro');
+        usuarioSinPerfil = user;
+        inpNombre.value = nombreVisible(user);
+        inpTelefono.value = user.phone || '';
+        mostrarPaso('perfil');
+      } catch (err) {
+        console.error('Error al consultar la tabla Clientes:', err);
+        idUsuarioEnProceso = null;
+        curtain.classList.add('lift');
+        loginView.classList.add('go');
+      }
+    }
+
+    async function iniciar() {
+      const errorOAuth = leerErrorOAuth();
+      if (errorOAuth) {
+        curtain.classList.add('lift');
+        mostrarRegistro('login');
+        setLoadingState(false, `Google no completó el inicio de sesión: ${errorOAuth}`, true);
+        return;
+      }
+
+      // Tiempo necesario para apreciar la animación completa del molino patagónico
+      const tiempoSplash = new Promise(resolve => setTimeout(resolve, 2100));
+
+      let sesionDetectada = null;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          sesionDetectada = session.user;
+        }
+      } catch (err) {
+        console.warn('Error al verificar sesión inicial:', err);
+      }
+
+      await tiempoSplash;
+
+      if (sesionDetectada) {
+        // Hay sesión activa: verificar y cargar dashboard
+        await continuarConUsuario(sesionDetectada);
+      } else if (!navegando) {
+        // No hay sesión activa: curso normal
+        // Se levanta la cortina y se desvela la pantalla de consulta de index.html
+        curtain.classList.add('lift');
+        loginView.classList.add('go');
+      }
+    }
+
+    // Al volver de Google el cliente de Supabase procesa la URL y emite SIGNED_IN
+    supabase.auth.onAuthStateChange((evento, session) => {
+      if (evento === 'SIGNED_IN' && session?.user) {
+        setTimeout(() => continuarConUsuario(session.user), 0);
+      }
+    });
+
+    googleBtn.addEventListener("click", async () => {
+      setLoadingState(true, "Conectando con Google...");
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.href.split('#')[0].split('?')[0]
+        }
+      });
+
+      if (error) {
+        console.error('Error iniciando OAuth con Google:', error);
+        setLoadingState(false, "No se pudo abrir el inicio de sesión con Google.", true);
+      }
+    });
+
+    pasoPerfil.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!usuarioSinPerfil) return;
+
+      const nombre = inpNombre.value.trim();
+      const telefono = validarTelefono(inpTelefono.value);
+
+      if (!nombre) {
+        setLoadingState(false, "Ingresá tu nombre completo.", true);
+        return;
+      }
+      if (!telefono) {
+        setLoadingState(false, "Ingresá un teléfono válido (entre 8 y 15 dígitos).", true);
+        return;
+      }
+
+      btnGuardarPerfil.disabled = true;
+      btnGuardarPerfil.textContent = "Guardando...";
+
+      try {
+        await registrarCliente(usuarioSinPerfil, { nombre, telefono });
+        setLoadingState(true, "¡Listo! Entrando...");
+        window.location.replace(obtenerRutaDashboard());
+      } catch (err) {
+        console.error('Error al registrar cliente:', err);
+        setLoadingState(false, "No pudimos guardar tus datos. Intentá de nuevo.", true);
+        btnGuardarPerfil.disabled = false;
+        btnGuardarPerfil.textContent = "Guardar y continuar";
+      }
+    });
+
+    btnOtraCuenta.addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      idUsuarioEnProceso = null;
+      usuarioSinPerfil = null;
+      mostrarPaso('login');
+    });
+
+    function leerErrorOAuth() {
+      const hash = new URLSearchParams(window.location.hash.slice(1));
+      const query = new URLSearchParams(window.location.search);
+      return hash.get('error_description') || query.get('error_description');
+    }
+
+    function limpiarParametrosOAuth() {
+      if (window.location.hash || window.location.search) {
+        history.replaceState(null, '', window.location.pathname);
+      }
+    }
+
+    iniciar();
+  </script>
+
 </body>
-
 </html>

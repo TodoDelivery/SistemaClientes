@@ -7,7 +7,11 @@ import { supabase } from './conexion_supabase.js';
 import { ESTADOS_BUSQUEDA, esBusquedaVencida, vencerBusquedasAbandonadas } from './script_asignacion.js';
 
 export const PAGINAS = {
-  login: 'login_google.html',
+  get login() {
+    return (typeof window !== 'undefined' && window.location.pathname.includes('/templates/'))
+      ? '../index.html'
+      : 'index.html';
+  },
   dashboard: 'dashboard.html',
   crearPedido: 'crear_pedido.html',
   pedidoActivo: 'pedido_activo.html',
@@ -164,7 +168,11 @@ export async function cerrarSesion() {
   if (saliendo) return;
   saliendo = true;
   await ejecutarLimpieza();
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } catch (err) {
+    console.warn('[Sesión] Error al cerrar sesión en Supabase:', err);
+  }
   window.location.replace(PAGINAS.login);
 }
 
