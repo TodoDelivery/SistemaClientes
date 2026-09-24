@@ -388,14 +388,23 @@ La app de clientes asume que el cadete hace exactamente esto:
 - Solo muestra ofertas con `estado_pedido IN ('libre','en_confirmacion')` e `id_cadete` = su id.
 - Al abrir el modal: `UPDATE ... SET estado_pedido='en_confirmacion' WHERE id_pedido=X AND id_cadete=yo AND
   estado_pedido IN ('libre','en_confirmacion')`. Si no actualiza filas, cierra el modal.
-  Además pone su `estado_cad` en `en_confirmacion`. El modal dura 15s y al vencer rechaza.
-- **Aceptar**: `UPDATE ... SET estado_pedido='asignado'` con la misma condición. Si no actualiza filas, avisa
-  "ya no disponible" y no toma el viaje. Si actualiza, pone `estado_cad='ocupado'` y manda
-  `cambio_estado_pedido` (`asignado`) por `pedido-en-curso-X`.
-- **Rechazar**: pone `estado_cad='disponible'` y hace `UPDATE ... SET id_cadete=null, estado_pedido='pendiente'`
-  con la misma condición. Solo si actualizó filas manda `pedido_rechazado`.
-- Si ya está ocupado (otra oferta abierta o viaje en curso) y le llega una oferta, la devuelve con el mismo
-  UPDATE condicional y el mismo broadcast del rechazo, pero sin cambiar su `estado_cad`.
+  Además pasa su `estado_cad` de `disponible` a `en_confirmacion`. El modal dura 15s y al vencer rechaza.
+- **Aceptar**: primero verifica que no tenga otro viaje (`asignado`/`en_camino_entrega`); si lo tiene, devuelve
+  la oferta como en "ocupado". Si no, `UPDATE ... SET estado_pedido='asignado'` con la misma condición. Si no
+  actualiza filas, avisa "ya no disponible" y no toma el viaje. Si actualiza, pone `estado_cad='ocupado'` y
+  manda `cambio_estado_pedido` (`asignado`) por `pedido-en-curso-X`. Desde que toca Aceptar hasta que se va
+  a la pantalla del viaje, cualquier oferta nueva se devuelve (`aceptandoPedido`).
+- **Rechazar**: pasa su `estado_cad` de `en_confirmacion` a `disponible` y hace
+  `UPDATE ... SET id_cadete=null, estado_pedido='pendiente'` con la misma condición. Solo si actualizó filas
+  manda `pedido_rechazado`.
+- Si ya está ocupado (otra oferta abierta, aceptando otra o viaje en curso) y le llega una oferta, la devuelve
+  con el mismo UPDATE condicional y el mismo broadcast del rechazo, pero sin cambiar su `estado_cad`.
+- **`estado_cad` es la disponibilidad que usa el motor**, así que el dashboard escribe de a una y en orden
+  (`escribirEstadoCad`), y abrir/cerrar ofertas solo mueve `disponible` ↔ `en_confirmacion`
+  (`... WHERE estado_cad = <estado previo>`): con el dashboard abierto en dos pestañas, cerrar una oferta en
+  una no pisa el `ocupado` de un viaje aceptado en la otra.
+- En el viaje (`conexion_rt_pedido_en_curso.js`) los cambios son condicionales: `en_camino_entrega` solo desde
+  `asignado`, `entregado` solo desde `asignado`/`en_camino_entrega`, y siempre con `id_cadete` = el cadete.
 - Escucha `pedido_retirado` en `pedidos-cadete-{id}` y cierra el modal sin tocar la BD.
 - Mientras está en turno hace `track` en Presence de `cadetes-disponibles` con `coords` y `coords_ts`, y lo
   repite con cada lectura del GPS (`Scripts/conexion_rt_pedidos_entrantes.js`). Sin `coords_ts` el cadete
@@ -509,6 +518,10 @@ Con 3 a 5 sesiones de cadete (`Templates/dashboard.html?id_cad=N`) en turno:
 12. Crear un pedido mientras otro busca cadete → pide confirmación, cancela el anterior (el cadete con la oferta
     abierta ve la cancelación) y arranca el nuevo.
 13. Aceptado → el panel pasa a "Cadete Asignado", muestra nombre, vehículo y patente, GPS en vivo y chat funcionando.
+14. Dashboard del cadete abierto en 2 pestañas: acepta en una → la otra cierra el modal, el cadete sigue `ocupado`
+    en la BD y no recibe otra oferta hasta terminar el viaje. Nunca queda con dos viajes.
+15. Llega una oferta mientras el cadete confirma otra ("Aceptar" ya tocado) → se devuelve sin abrir un segundo modal.
+16. El cadete cierra la pestaña con una oferta abierta y vuelve a entrar → queda `disponible` y vuelve a recibir ofertas.
 
 ---
 
