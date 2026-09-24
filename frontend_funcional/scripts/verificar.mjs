@@ -157,7 +157,7 @@ for (const archivo of archivos) {
 // 5. Contrato con la app de cadetes (docs/contrato_app_cadetes.md)
 // Si alguno de estos nombres cambia, hay que cambiarlo también en el repo de cadetes.
 const CONTRATO = [
-  "`pedidos-cadete-${", "`pedido-en-curso-${",
+  "`pedidos-cadete-${", "`pedido-en-curso-${", "'cadetes-disponibles'", "coords_ts",
   "'nuevo_pedido'", "'pedido_retirado'", "'pedido_rechazado'", "'cambio_estado_pedido'",
   "'ubicacion_cadete'", "'cadete_conectado'", "'mensaje_chat'",
   "'pendiente'", "'libre'", "'en_confirmacion'", "'asignado'", "'en_camino_entrega'", "'entregado'", "'rendido'", "'cancelado'",

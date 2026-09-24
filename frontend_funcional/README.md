@@ -177,8 +177,11 @@ La especificación completa está en [`docs/contrato_app_cadetes.md`](docs/contr
 | `pedido-en-curso-{id}` | `cadete_conectado` | Cadete → Cliente | `{ id_pedido, id_cadete, patente, vehiculo, timestamp }` |
 | `pedido-en-curso-{id}` | `ubicacion_cadete` | Cadete → Cliente | `{ id_pedido, id_cadete, patente, vehiculo, coords: { lat, lng, accuracy, heading, speed, timestamp } }` |
 | `pedido-en-curso-{id}` | `mensaje_chat` | ambos | `{ id_pedido, id_emisor, id_receptor, remitente, texto, hora: 'HH:MM', timestamp }` |
+| `cadetes-disponibles` | Presence (`track`) | Cadete → todos | `{ id_cad, nombre, coords: { lat, lng }, coords_ts, estado_cad, patente, vehiculo_cad }` |
 
 **Tiempos:** la oferta al cadete vence a los `TIMEOUT_OFERTA_MS = 20000` (20 s). Tiene que ser **mayor** que el timer del modal del cadete (15 s).
+
+**Asignación por cercanía:** el motor ofrece primero al cadete libre más cercano al punto de retiro (Haversine con la ubicación de Presence; solo cuentan las `coords` con `coords_ts`, que es la hora del último fix GPS). Después de `RECHAZOS_MAX_CERCANIA = 3` ofertas sin aceptar, sigue por `id_cad` sin tener en cuenta la distancia.
 
 **Regla:** cualquier cambio en estas tablas va en **los dos repos a la vez**, y se actualiza `docs/contrato_app_cadetes.md`. `npm run verificar` avisa si alguno de estos nombres desaparece del código de clientes, pero no puede revisar el otro repo.
 
@@ -215,7 +218,8 @@ No hay CI: la verificación se corre a mano antes de cada commit.
 
 Con 2 o 3 sesiones de cadete abiertas en la app de cadetes:
 
-1. Pedido nuevo: se ofrece a un cadete por vez, en orden; al aceptar se ve cadete, patente, GPS y chat.
+1. Pedido nuevo: se ofrece a un cadete por vez, primero al más cercano al retiro; al aceptar se ve cadete, patente, GPS y chat.
+   Si los 3 más cercanos rechazan, se sigue por `id_cad`.
 2. Todos rechazan → cancelado con "Todos los cadetes rechazaron el pedido".
 3. Ningún cadete en turno → cancelado con "No hay cadetes conectados".
 4. El cadete no responde → a los 20 s pasa al siguiente.
@@ -245,7 +249,8 @@ Después de actualizar: `npm run verificar` y las pruebas manuales.
 - **El motor de asignación corre en el navegador del cliente**, dentro de `pedido_activo.html`. Si el cliente cierra esa pantalla, la búsqueda se pausa (la página avisa antes de salir) y se retoma al volver a abrirla. Está previsto moverlo a una Supabase Edge Function cuando exista la UI de cadetes definitiva.
 - **Varias pestañas con el mismo pedido:** solo una corre el motor (Web Locks); si se cierra, otra toma el control.
 - **Búsquedas abandonadas:** un pedido que sigue sin cadete más de 30 minutos (`VENCIMIENTO_BUSQUEDA_MS`) se cancela al abrir la app, en vez de ofrecerse días después.
-- **Al retomar una búsqueda pausada** se puede volver a ofrecer a un cadete que ya había rechazado: el registro de rechazos vive en memoria. Se resuelve con la Edge Function.
+- **Al retomar una búsqueda pausada** se puede volver a ofrecer a un cadete que ya había rechazado: el registro de rechazos vive en memoria. Por lo mismo, la cuenta de rechazos por cercanía vuelve a cero. Se resuelve con la Edge Function.
+- **Ubicación de los cadetes a la vista del cliente:** para asignar por cercanía, el navegador del cliente escucha Presence de `cadetes-disponibles`, que trae la posición GPS de todos los cadetes en turno. El canal ya era público (el panel de admin lo usa), pero con el motor en el cliente cualquier cliente puede leer esas posiciones. Se resuelve con la Edge Function o pasando el canal a privado.
 - **El total se calcula en el cliente** (`coste_pedido`). Con backend, recalcularlo del lado del servidor.
 - **El chat no se guarda**: va por broadcast y se pierde al recargar.
 - **Direcciones:** se usa Nominatim (OpenStreetMap), un servicio público con máximo 1 consulta por segundo y sin autocompletado. Está bien para bajo volumen; con muchos usuarios hay que pasar a un proveedor con contrato.

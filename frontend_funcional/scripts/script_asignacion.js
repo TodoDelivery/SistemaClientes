@@ -13,6 +13,11 @@
 // una revisión, que relee el pedido en BD y actúa. Las escrituras son condicionales (bloqueo
 // optimista) para no pisar a un cadete que acepta o rechaza en el mismo instante.
 //
+// A quién se ofrece: primero al cadete libre más cercano al punto de retiro (Haversine sobre la
+// ubicación que cada cadete publica en Presence de 'cadetes-disponibles'). Si RECHAZOS_MAX_CERCANIA
+// cadetes seguidos lo rechazan o no responden, se sigue sin tener en cuenta la distancia (por id_cad).
+// La disponibilidad siempre sale de la BD (Cadetes.estado_cad); de Presence solo se toma la ubicación.
+//
 // Módulo aislado: no toca el DOM. La UI se entera de los cambios con suscribirMotorAsignacion().
 // Está previsto moverlo a una Supabase Edge Function cuando se haga la UI de cadetes.
 import { supabase } from './conexion_supabase.js';
@@ -21,7 +26,9 @@ export const CONFIG_ASIGNACION = {
   TIMEOUT_OFERTA_MS: 20000,        // el modal del cadete dura 15s; el resto es margen de red
   INTERVALO_REVISION_MS: 3000,     // latido de respaldo por si se pierde un evento realtime
   ESPERA_MAX_OCUPADOS_MS: 60000,   // cuánto esperar a que se libere un cadete ocupado antes de cancelar
-  VENCIMIENTO_BUSQUEDA_MS: 30 * 60 * 1000 // un pedido que sigue sin cadete después de esto quedó abandonado
+  VENCIMIENTO_BUSQUEDA_MS: 30 * 60 * 1000, // un pedido que sigue sin cadete después de esto quedó abandonado
+  RECHAZOS_MAX_CERCANIA: 3,        // ofertas por cercanía sin aceptar antes de pasar a asignar sin distancia
+  ESPERA_UBICACIONES_MS: 5000      // cuánto esperar el primer estado de Presence antes de ofrecer sin ubicaciones
 };
 
 export const ESTADOS_BUSQUEDA = ['pendiente', 'libre', 'en_confirmacion'];
@@ -29,6 +36,8 @@ export const ESTADOS_OFERTA = ['libre', 'en_confirmacion'];
 // Filtro PostgREST "sin oferta vigente": nadie asignado o pedido devuelto a 'pendiente'
 const FILTRO_SIN_OFERTA = 'id_cadete.is.null,estado_pedido.eq.pendiente';
 const MOTIVO_VENCIDA = 'La búsqueda de cadete venció';
+// Canal de Presence donde cada cadete en turno publica su ubicación (lo mantiene la app de cadetes)
+const CANAL_UBICACIONES_CADETES = 'cadetes-disponibles';
 
 let busqueda = null;
 const motivosCancelacion = new Map(); // id_pedido -> motivo mostrado en el panel
@@ -108,8 +117,14 @@ export function iniciarBusquedaCadete(idPedido) {
     rechazosRecibidos: new Set(), // rechazos avisados por broadcast (por si la BD todavía no los refleja)
     idCadeteOfertado: null,
     nombreCadeteOfertado: '',
+    distanciaOfertaKm: null,      // del cadete ofertado al punto de retiro, si se conocía su ubicación
     ofertaExpiraEn: 0,
     esperandoDesde: null,
+    modo: 'cercania',             // 'cercania': al más cercano | 'sin_distancia': por id_cad
+    rechazosCercania: 0,          // ofertas por cercanía que terminaron sin aceptar (rechazo o sin respuesta)
+    canalUbicaciones: null,       // Presence 'cadetes-disponibles' (solo se escucha, no se hace track)
+    ubicacionesListas: false,     // llegó el primer estado de Presence (o el canal falló)
+    iniciadaEn: Date.now(),
     ui: null,
     latido: null,
     ejecutando: false,
@@ -120,6 +135,7 @@ export function iniciarBusquedaCadete(idPedido) {
 
   busqueda = b;
   console.log(`[Asignación] Pedido #${b.idPedido}: iniciando búsqueda de cadete.`);
+  conectarUbicacionesCadetes(b);
   b.latido = setInterval(() => solicitarRevisionAsignacion(b), CONFIG_ASIGNACION.INTERVALO_REVISION_MS);
   solicitarRevisionAsignacion(b);
   return b;
@@ -129,6 +145,7 @@ export function detenerBusqueda(b, motivo) {
   if (!b || b.finalizada) return;
   b.finalizada = true;
   clearInterval(b.latido);
+  desconectarUbicacionesCadetes(b);
   console.log(`[Asignación] Pedido #${b.idPedido}: búsqueda finalizada (${motivo}).`);
   b.resolverTerminada();
   emitir('finalizada', b.idPedido, { motivo });
@@ -314,6 +331,7 @@ async function revisarAsignacion(b) {
       if (b.idCadeteOfertado !== null) b.intentados.add(b.idCadeteOfertado);
       b.idCadeteOfertado = idCadeteEnBD;
       b.nombreCadeteOfertado = '';
+      b.distanciaOfertaKm = null;
       b.ofertaExpiraEn = Date.now() + CONFIG_ASIGNACION.TIMEOUT_OFERTA_MS;
     }
 
@@ -325,7 +343,7 @@ async function revisarAsignacion(b) {
       renderEstadoBusqueda(
         b,
         `Ofreciendo a ${b.nombreCadeteOfertado || `Cadete #${idCadeteEnBD}`}`,
-        `${accion} • Intento ${b.intentados.size + 1} • ${Math.ceil(restanteMs / 1000)}s`
+        `${accion}${textoDistancia(b)} • Intento ${b.intentados.size + 1} • ${Math.ceil(restanteMs / 1000)}s`
       );
       return; // seguir esperando la respuesta de este cadete
     }
@@ -352,21 +370,35 @@ async function revisarAsignacion(b) {
       // Cerrarle el modal si todavía lo tiene abierto
       enviarBroadcastEfimero(`pedidos-cadete-${idCadeteEnBD}`, 'pedido_retirado', { id_pedido: b.idPedido, id_cadete: idCadeteEnBD });
     }
-    b.intentados.add(idCadeteEnBD);
-    b.idCadeteOfertado = null;
+    registrarOfertaTerminada(b, idCadeteEnBD);
     emitir('pedido', b.idPedido, { pedido: { id_pedido: b.idPedido, id_cadete: null, estado_pedido: 'pendiente' } });
   } else if (b.idCadeteOfertado !== null) {
     // 3. Había una oferta y el cadete la devolvió (botón rechazar o fin de su timer)
     console.log(`[Asignación] Pedido #${b.idPedido}: cadete #${b.idCadeteOfertado} rechazó.`);
-    b.intentados.add(b.idCadeteOfertado);
-    b.idCadeteOfertado = null;
+    registrarOfertaTerminada(b, b.idCadeteOfertado);
   }
 
   // 4. Sin oferta vigente: pasar al siguiente cadete
-  await ofrecerAlSiguienteCadete(b);
+  await ofrecerAlSiguienteCadete(b, pedido);
 }
 
-async function ofrecerAlSiguienteCadete(b) {
+// El cadete no tomó la oferta (rechazo o sin respuesta): no se le vuelve a ofrecer y, si se estaba
+// buscando por cercanía, cuenta para pasar a asignar sin tener en cuenta la distancia
+function registrarOfertaTerminada(b, idCadete) {
+  b.intentados.add(idCadete);
+  b.idCadeteOfertado = null;
+  b.distanciaOfertaKm = null;
+  if (b.modo !== 'cercania') return;
+
+  b.rechazosCercania++;
+  if (b.rechazosCercania >= CONFIG_ASIGNACION.RECHAZOS_MAX_CERCANIA) {
+    b.modo = 'sin_distancia';
+    desconectarUbicacionesCadetes(b); // ya no se usan
+    console.log(`[Asignación] Pedido #${b.idPedido}: ${b.rechazosCercania} cadetes cercanos no lo tomaron, se asigna sin tener en cuenta la distancia.`);
+  }
+}
+
+async function ofrecerAlSiguienteCadete(b, pedido) {
   const { data: cadetes, error } = await supabase
     .from('Cadetes')
     .select('id_cad, nombre_cad, alias_cad, estado_cad')
@@ -380,9 +412,16 @@ async function ofrecerAlSiguienteCadete(b) {
   const libres = sinIntentar.filter(c => c.estado_cad === 'disponible');
   const ocupados = sinIntentar.filter(c => c.estado_cad !== 'disponible');
 
-  // A) Hay un cadete libre que todavía no vio el pedido: ofrecérselo solo a él
+  // A) Hay cadetes libres que todavía no vieron el pedido: ofrecérselo a uno solo
   if (libres.length > 0) {
-    const cadete = libres[0];
+    // Sin el primer estado de Presence todos parecerían estar sin ubicación y se ofrecería por id
+    const esperaRestanteMs = CONFIG_ASIGNACION.ESPERA_UBICACIONES_MS - (Date.now() - b.iniciadaEn);
+    if (b.modo === 'cercania' && !b.ubicacionesListas && esperaRestanteMs > 0) {
+      renderEstadoBusqueda(b, 'Buscando el cadete más cercano', 'Ubicando a los cadetes en turno');
+      return; // el primer sync de Presence (o el latido) vuelve a revisar
+    }
+
+    const { cadete, distanciaKm } = elegirCadete(b, libres, pedido);
     const idCadete = Number(cadete.id_cad);
 
     const { data: pedidoOfertado, error: errOferta } = await supabase
@@ -403,13 +442,17 @@ async function ofrecerAlSiguienteCadete(b) {
 
     b.idCadeteOfertado = idCadete;
     b.nombreCadeteOfertado = cadete.nombre_cad || cadete.alias_cad || `Cadete #${idCadete}`;
+    b.distanciaOfertaKm = distanciaKm;
     b.ofertaExpiraEn = Date.now() + CONFIG_ASIGNACION.TIMEOUT_OFERTA_MS;
     b.esperandoDesde = null;
     emitir('pedido', b.idPedido, { pedido: pedidoOfertado });
 
     const intento = b.intentados.size + 1;
-    console.log(`[Asignación] Pedido #${b.idPedido}: ofreciendo a cadete #${idCadete} (intento ${intento}).`);
-    renderEstadoBusqueda(b, `Ofreciendo a ${b.nombreCadeteOfertado}`, `Enviando oferta • Intento ${intento}`);
+    const criterio = b.modo !== 'cercania'
+      ? 'sin tener en cuenta la distancia'
+      : distanciaKm !== null ? `a ${distanciaKm.toFixed(2)} km del retiro` : 'sin ubicación conocida';
+    console.log(`[Asignación] Pedido #${b.idPedido}: ofreciendo a cadete #${idCadete} (intento ${intento}, ${criterio}).`);
+    renderEstadoBusqueda(b, `Ofreciendo a ${b.nombreCadeteOfertado}`, `Enviando oferta${textoDistancia(b)} • Intento ${intento}`);
     enviarBroadcastEfimero(`pedidos-cadete-${idCadete}`, 'nuevo_pedido', pedidoOfertado);
     return;
   }
@@ -465,4 +508,114 @@ function registrarVencimiento({ id_pedido, id_cadete }) {
 function renderEstadoBusqueda(b, titulo, detalle) {
   b.ui = { titulo, detalle };
   emitir('busqueda', b.idPedido, { titulo, detalle });
+}
+
+function textoDistancia(b) {
+  const km = b.distanciaOfertaKm;
+  if (km === null) return '';
+  return km < 1
+    ? ` • a ${Math.round(km * 1000)} m del retiro`
+    : ` • a ${km.toLocaleString('es-AR', { maximumFractionDigits: 1 })} km del retiro`;
+}
+
+// -------------------------------------------------------------------------
+// ASIGNACIÓN POR CERCANÍA (UBICACIONES POR REALTIME PRESENCE)
+// -------------------------------------------------------------------------
+// La app de cadetes publica en Presence de 'cadetes-disponibles' { id_cad, coords: { lat, lng }, coords_ts, ... }
+// y lo actualiza con cada lectura del GPS. coords_ts es la hora del último fix: vale null mientras el
+// cadete todavía transmite la ubicación por defecto, y esas coords no sirven para medir distancias.
+
+/**
+ * Por cercanía: el cadete libre más cerca del punto de retiro. Los que no tienen ubicación solo se
+ * eligen si ninguno la tiene, y entonces (igual que sin distancia) va el primero por id_cad.
+ * @returns {{ cadete: Object, distanciaKm: number|null }}
+ */
+function elegirCadete(b, libres, pedido) {
+  const latRetiro = pedido.latitud_org == null ? NaN : Number(pedido.latitud_org);
+  const lngRetiro = pedido.longitud_org == null ? NaN : Number(pedido.longitud_org);
+  let elegido = { cadete: libres[0], distanciaKm: null };
+  if (b.modo !== 'cercania' || !Number.isFinite(latRetiro) || !Number.isFinite(lngRetiro)) return elegido;
+
+  const ubicaciones = leerUbicacionesCadetes(b);
+  for (const cadete of libres) {
+    const ubicacion = ubicaciones.get(Number(cadete.id_cad));
+    if (!ubicacion) continue;
+    const distanciaKm = distanciaHaversineKm(ubicacion.lat, ubicacion.lng, latRetiro, lngRetiro);
+    // Con '<' estricto, a igual distancia gana el de menor id_cad (libres viene ordenado por id)
+    if (elegido.distanciaKm === null || distanciaKm < elegido.distanciaKm) {
+      elegido = { cadete, distanciaKm };
+    }
+  }
+  return elegido;
+}
+
+/** id_cad -> { lat, lng, ts } de los cadetes en Presence con GPS real (si tiene varias pestañas, el fix más nuevo) */
+function leerUbicacionesCadetes(b) {
+  const ubicaciones = new Map();
+  if (!b.canalUbicaciones) return ubicaciones;
+
+  for (const presencias of Object.values(b.canalUbicaciones.presenceState())) {
+    for (const p of presencias) {
+      const id = Number(p.id_cad);
+      const ts = Number(p.coords_ts);
+      const lat = Number(p.coords?.lat);
+      const lng = Number(p.coords?.lng);
+      if (!id || !ts || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+      const previa = ubicaciones.get(id);
+      if (!previa || ts > previa.ts) ubicaciones.set(id, { lat, lng, ts });
+    }
+  }
+  return ubicaciones;
+}
+
+// Solo escucha: sin track(), así el cliente no aparece como un cadete más en el canal
+async function conectarUbicacionesCadetes(b) {
+  const marcarListas = () => {
+    if (b.ubicacionesListas) return;
+    b.ubicacionesListas = true;
+    solicitarRevisionAsignacion(b);
+  };
+
+  try {
+    // supabase.channel() devolvería el canal de una búsqueda anterior que todavía se está cerrando
+    const previos = typeof supabase.getChannels === 'function'
+      ? supabase.getChannels().filter(c => c.topic === `realtime:${CANAL_UBICACIONES_CADETES}`)
+      : [];
+    for (const ch of previos) await supabase.removeChannel(ch);
+    if (b.finalizada || b.modo !== 'cercania') return;
+
+    const canal = supabase.channel(CANAL_UBICACIONES_CADETES);
+    b.canalUbicaciones = canal;
+    canal
+      // Solo importa el primero: después cada movimiento del GPS de un cadete dispara otro sync,
+      // y las ubicaciones se leen recién al elegir a quién ofrecer
+      .on('presence', { event: 'sync' }, marcarListas)
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`[Asignación] Pedido #${b.idPedido}: Presence '${CANAL_UBICACIONES_CADETES}' en ${status}, se ofrece sin ubicaciones.`, err);
+          marcarListas();
+        }
+      });
+  } catch (err) {
+    console.warn(`[Asignación] Pedido #${b.idPedido}: no se pudo escuchar la ubicación de los cadetes, se ofrece sin ubicaciones.`, err);
+    marcarListas();
+  }
+}
+
+function desconectarUbicacionesCadetes(b) {
+  const canal = b.canalUbicaciones;
+  if (!canal) return;
+  b.canalUbicaciones = null;
+  supabase.removeChannel(canal).catch(err => console.warn('[Asignación] Error cerrando el canal de ubicaciones:', err));
+}
+
+/** Distancia en línea recta (km) entre dos puntos, fórmula de Haversine */
+function distanciaHaversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371; // radio medio de la Tierra en km
+  const rad = (grados) => grados * Math.PI / 180;
+  const dLat = rad(lat2 - lat1);
+  const dLng = rad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

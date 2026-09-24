@@ -169,7 +169,13 @@ Tipos de paquete del prototipo: "Bolsa de Comida", "Caja de Pizza", "Paquete Chi
 
 ### 7.1 Reglas
 
-- El pedido se ofrece a **UN SOLO cadete por vez**, en orden de `id_cad` ascendente.
+- El pedido se ofrece a **UN SOLO cadete por vez**.
+- **Por cercanía primero:** se elige al cadete libre más cercano al punto de retiro (`latitud_org`, `longitud_org`),
+  con la distancia de Haversine a la ubicación que el cadete publica en Presence (7.7). Los cadetes sin ubicación
+  real quedan al final, en orden de `id_cad`.
+- **Después de `RECHAZOS_MAX_CERCANIA` (3) ofertas por cercanía sin aceptar** (rechazo o sin respuesta), se sigue
+  **sin tener en cuenta la distancia**: en orden de `id_cad` ascendente.
+- La disponibilidad sale siempre de la BD (`Cadetes.estado_cad`). De Presence solo se toma la ubicación.
 - **Rechaza** → se anota y se pasa al siguiente. Nunca se le vuelve a ofrecer el mismo pedido en esa búsqueda.
 - **No responde a tiempo** → el cliente retira la oferta, le avisa al cadete y pasa al siguiente.
 - **Ocupado** (`estado_cad` distinto de `disponible`) → se saltea. Si no hay nadie libre pero sí cadetes
@@ -191,7 +197,9 @@ suscrita a sus cambios) para que la migración sea directa.
 const CONFIG_ASIGNACION = {
   TIMEOUT_OFERTA_MS: 20000,       // el modal del cadete dura 15s; el resto es margen de red
   INTERVALO_REVISION_MS: 3000,    // latido de respaldo por si se pierde un evento realtime
-  ESPERA_MAX_OCUPADOS_MS: 60000   // espera máxima a que se libere un cadete ocupado antes de cancelar
+  ESPERA_MAX_OCUPADOS_MS: 60000,  // espera máxima a que se libere un cadete ocupado antes de cancelar
+  RECHAZOS_MAX_CERCANIA: 3,       // ofertas por cercanía sin aceptar antes de pasar a asignar sin distancia
+  ESPERA_UBICACIONES_MS: 5000     // espera máxima al primer estado de Presence antes de ofrecer sin ubicaciones
 };
 ```
 `TIMEOUT_OFERTA_MS` debe ser siempre MAYOR que el timer del modal del cadete (15s).
@@ -205,17 +213,24 @@ const CONFIG_ASIGNACION = {
   rechazosRecibidos: Set<id_cad>, // rechazos avisados por broadcast (por si la BD aún no los refleja)
   idCadeteOfertado: null,         // cadete con la oferta vigente según este motor
   nombreCadeteOfertado: '',
+  distanciaOfertaKm: null,        // del cadete ofertado al punto de retiro, si se conocía su ubicación
   ofertaExpiraEn: 0,              // timestamp ms
   esperandoDesde: null,           // timestamp ms del inicio de la espera por cadetes ocupados
+  modo: 'cercania',               // 'cercania' | 'sin_distancia'
+  rechazosCercania: 0,            // ofertas por cercanía que terminaron sin aceptar
+  canalUbicaciones: null,         // Presence 'cadetes-disponibles' (solo escucha, sin track)
+  ubicacionesListas: false,       // llegó el primer sync de Presence (o el canal falló)
+  iniciadaEn,                     // timestamp ms
   ui: { titulo, detalle },        // texto para el panel
   latido,                         // setInterval(revisar, INTERVALO_REVISION_MS)
   ejecutando: false, repetir: false, finalizada: false
 }
 ```
 
-- `iniciarBusquedaCadete(idPedido)`: detiene la búsqueda anterior si existe, crea el estado, arranca el
-  latido y pide una revisión inmediata.
-- `detenerBusqueda(b, motivo)`: `finalizada = true` y `clearInterval(latido)`. Idempotente.
+- `iniciarBusquedaCadete(idPedido)`: detiene la búsqueda anterior si existe, crea el estado, se suscribe a
+  Presence de `cadetes-disponibles`, arranca el latido y pide una revisión inmediata. El primer `sync` de
+  Presence (o un `CHANNEL_ERROR`/`TIMED_OUT`) marca `ubicacionesListas` y pide otra revisión.
+- `detenerBusqueda(b, motivo)`: `finalizada = true`, `clearInterval(latido)` y quita el canal de Presence. Idempotente.
 
 ### 7.4 Serialización de revisiones
 
@@ -256,31 +271,44 @@ revisarAsignacion(b):
          RETURNING id_pedido
        si no actualizó filas → b.repetir = true; salir   // el cadete respondió justo ahora
        si fue por timeout → broadcast 'pedido_retirado' al cadete (7.7)
-       intentados += idOfertado; idCadeteOfertado = null
+       ofertaTerminada(idOfertado)
 
   3) si NO hayOferta y b.idCadeteOfertado != null:     // el cadete devolvió la oferta (rechazo / fin de su timer)
-       intentados += idCadeteOfertado; idCadeteOfertado = null
+       ofertaTerminada(idCadeteOfertado)
 
-  4) ofrecerAlSiguienteCadete(b)
+  4) ofrecerAlSiguienteCadete(b, pedido)
+
+ofertaTerminada(id):
+  intentados += id; idCadeteOfertado = null
+  si modo = 'cercania':
+    rechazosCercania += 1
+    si rechazosCercania >= RECHAZOS_MAX_CERCANIA → modo = 'sin_distancia'; quitar el canal de Presence
 ```
 
 ```
-ofrecerAlSiguienteCadete(b):
+ofrecerAlSiguienteCadete(b, pedido):
   cadetes   = SELECT id_cad, nombre_cad, alias_cad, estado_cad FROM Cadetes
               WHERE estado_cad IN ('disponible','en_confirmacion','ocupado') ORDER BY id_cad ASC
   sinIntentar = cadetes que no están en b.intentados
   libres      = sinIntentar con estado_cad = 'disponible'
   ocupados    = sinIntentar con otro estado
 
-  A) si hay libres → cadete = libres[0]
+  A) si hay libres:
+       si modo = 'cercania' y NO ubicacionesListas y (ahora - iniciadaEn) < ESPERA_UBICACIONES_MS:
+         UI "Buscando el cadete más cercano" / "Ubicando a los cadetes en turno"; salir
+       cadete = elegirCadete(libres, pedido):
+         - modo 'sin_distancia' o pedido sin latitud_org/longitud_org → libres[0]
+         - modo 'cercania' → el de menor Haversine(ubicación Presence, retiro) entre los libres con
+           ubicación real (coords_ts != null). Empate → menor id_cad. Ninguno con ubicación → libres[0]
        UPDATE Pedidos SET id_cadete = cadete, estado_pedido = 'libre'
          WHERE id_pedido = X
            AND estado_pedido IN ('pendiente','libre','en_confirmacion')
            AND (id_cadete IS NULL OR estado_pedido = 'pendiente')        // sin oferta vigente
          RETURNING *
        si no actualizó filas → b.repetir = true; salir
-       idCadeteOfertado = cadete; ofertaExpiraEn = ahora + TIMEOUT_OFERTA_MS; esperandoDesde = null
-       UI "Ofreciendo a {nombre}" / "Enviando oferta • Intento N"
+       idCadeteOfertado = cadete; distanciaOfertaKm = distancia o null
+       ofertaExpiraEn = ahora + TIMEOUT_OFERTA_MS; esperandoDesde = null
+       UI "Ofreciendo a {nombre}" / "Enviando oferta[ • a {distancia} del retiro] • Intento N"
        broadcast 'nuevo_pedido' al cadete con la fila completa devuelta (7.7)
        salir
 
@@ -334,8 +362,14 @@ Con supabase-js, el filtro "sin oferta vigente" se arma así:
 | `pedidos-cadete-{id_cad}`| `nuevo_pedido`    | Cliente → Cadete | fila completa de `Pedidos` (estado `libre`, `id_cadete` = ese cadete) |
 | `pedidos-cadete-{id_cad}`| `pedido_retirado` | Cliente → Cadete | `{ id_pedido, id_cadete }`                |
 | `pedido-en-curso-{id}`   | `pedido_rechazado`| Cadete → Cliente | `{ id_pedido, id_cadete_rechazo }`        |
+| `cadetes-disponibles`    | Presence (`track`)| Cadete → todos   | `{ id_cad, nombre, coords: { lat, lng }, coords_ts, estado_cad, patente, vehiculo_cad }` (key `cad_{id_cad}`) |
 
-Todos los canales se crean con `{ config: { broadcast: { ack: true } } }`.
+Todos los canales de broadcast se crean con `{ config: { broadcast: { ack: true } } }`.
+
+**Ubicación de los cadetes (Presence):** el motor se suscribe a `cadetes-disponibles` solo para escuchar (no hace
+`track`) y lee `presenceState()` al elegir a quién ofrecer. `coords_ts` es la hora (ms) del último fix GPS; vale
+`null` mientras el cadete transmite la ubicación por defecto, y esas `coords` no se usan para medir distancias.
+Si un cadete tiene varias pestañas, se usa la presencia con el `coords_ts` más nuevo.
 
 Para mandar a un canal que el cliente no escucha (`pedidos-cadete-*`), usar un helper "broadcast efímero":
 1. Si ya existe un canal con ese topic (`supabase.getChannels()` con `topic === 'realtime:' + nombre`),
@@ -363,6 +397,9 @@ La app de clientes asume que el cadete hace exactamente esto:
 - Si ya está ocupado (otra oferta abierta o viaje en curso) y le llega una oferta, la devuelve con el mismo
   UPDATE condicional y el mismo broadcast del rechazo, pero sin cambiar su `estado_cad`.
 - Escucha `pedido_retirado` en `pedidos-cadete-{id}` y cierra el modal sin tocar la BD.
+- Mientras está en turno hace `track` en Presence de `cadetes-disponibles` con `coords` y `coords_ts`, y lo
+  repite con cada lectura del GPS (`Scripts/conexion_rt_pedidos_entrantes.js`). Sin `coords_ts` el cadete
+  igual recibe ofertas, pero después de los que tienen ubicación.
 - NUNCA toma pedidos sin cadete de una "cola" ni se asigna pedidos ajenos.
 
 ### 7.9 Errores del prototipo anterior que NO hay que reintroducir
@@ -452,22 +489,26 @@ Cuando no hay pedido activo, se muestra el estado vacío con un botón a "Solici
 
 ## 12. Pruebas de aceptación
 
-Con 2 o 3 sesiones de cadete (`Templates/dashboard.html?id_cad=N`) en turno:
+Con 3 a 5 sesiones de cadete (`Templates/dashboard.html?id_cad=N`) en turno:
 
-1. Cadetes 1 y 2 rechazan, 3 acepta → se ofrece en orden 1 → 2 → 3, nunca a dos a la vez; queda `asignado` al 3.
-2. Todos rechazan → `cancelado` con "Todos los cadetes rechazaron el pedido"; el que rechazó NO vuelve a
-   recibir la oferta. Crear otro pedido → se vuelve a ofrecer desde el cadete 1.
-3. Un cadete `ocupado` → nunca recibe la oferta.
-4. Ningún cadete en turno → `cancelado` al instante con "No hay cadetes conectados".
-5. El cadete deja vencer el modal o cierra la pestaña → a los ≤20s pasa al siguiente y al primero se le cierra el modal.
-6. Todos ocupados → el panel muestra la cuenta regresiva; si uno se libera, se le ofrece; si no, a los 60s
+1. Cadetes con GPS a distintas distancias del retiro: se ofrece primero al más cercano y, si rechaza, al
+   siguiente más cercano; nunca a dos a la vez. El panel muestra "a {distancia} del retiro".
+2. Con 5 cadetes: los 3 más cercanos rechazan (o no responden) → el 4.º intento se ofrece sin tener en cuenta la
+   distancia, por `id_cad` (en consola: "3 cadetes cercanos no lo tomaron").
+3. Todos rechazan → `cancelado` con "Todos los cadetes rechazaron el pedido"; el que rechazó NO vuelve a
+   recibir la oferta. Crear otro pedido → se vuelve a buscar por cercanía desde cero.
+4. Cadete sin permiso de GPS (sin `coords_ts`) → recibe la oferta solo después de los que tienen ubicación.
+5. Un cadete `ocupado` → nunca recibe la oferta.
+6. Ningún cadete en turno → `cancelado` al instante con "No hay cadetes conectados".
+7. El cadete deja vencer el modal o cierra la pestaña → a los ≤20s pasa al siguiente y al primero se le cierra el modal.
+8. Todos ocupados → el panel muestra la cuenta regresiva; si uno se libera, se le ofrece; si no, a los 60s
    `cancelado` con "Ningún cadete se liberó a tiempo".
-7. El cadete acepta justo cuando vence el timeout → solo UNO queda con el pedido; el otro ve "ya no disponible".
-8. Cambiar de pestaña en el cadete con el modal abierto → el modal y su timer siguen, sin reabrirse en loop.
-9. Recargar la app de clientes durante una búsqueda y abrir el pedido desde el historial → la búsqueda se reanuda.
-10. Crear un pedido mientras otro busca cadete → pide confirmación, cancela el anterior (el cadete con la oferta
+9. El cadete acepta justo cuando vence el timeout → solo UNO queda con el pedido; el otro ve "ya no disponible".
+10. Cambiar de pestaña en el cadete con el modal abierto → el modal y su timer siguen, sin reabrirse en loop.
+11. Recargar la app de clientes durante una búsqueda y abrir el pedido desde el historial → la búsqueda se reanuda.
+12. Crear un pedido mientras otro busca cadete → pide confirmación, cancela el anterior (el cadete con la oferta
     abierta ve la cancelación) y arranca el nuevo.
-11. Aceptado → el panel pasa a "Cadete Asignado", muestra nombre, vehículo y patente, GPS en vivo y chat funcionando.
+13. Aceptado → el panel pasa a "Cadete Asignado", muestra nombre, vehículo y patente, GPS en vivo y chat funcionando.
 
 ---
 
