@@ -51,6 +51,7 @@ Cada enlace es relativo **al archivo que lo escribe**: desde una página, un mó
 │   └── estilos_cliente.css   Estilos compartidos (zonas seguras, Leaflet oscuro, animaciones)
 │
 ├── docs/contrato_app_cadetes.md   Especificación completa: datos, estados, motor, canales
+├── docs/asignacion_por_cercania.md   Cómo se elige al cadete (cercanía + 3 rechazos) y cómo verificarlo
 ├── netlify.toml
 └── package.json            Solo scripts de desarrollo (no hay dependencias)
 ```
