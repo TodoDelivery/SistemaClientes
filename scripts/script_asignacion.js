@@ -16,7 +16,9 @@
 // A quién se ofrece: primero al cadete libre más cercano al punto de retiro (Haversine sobre la
 // ubicación que cada cadete publica en Presence de 'cadetes-disponibles'). Si RECHAZOS_MAX_CERCANIA
 // cadetes seguidos lo rechazan o no responden, se sigue sin tener en cuenta la distancia (por id_cad).
-// La disponibilidad siempre sale de la BD (Cadetes.estado_cad); de Presence solo se toma la ubicación.
+// El estado ('disponible'/'ocupado') siempre sale de la BD (Cadetes.estado_cad), pero solo cuenta si
+// ese cadete sigue en Presence: si cerró la app sin pasar por "Finalizar Turno", su fila queda vieja
+// en la BD y Presence es la única forma de notar que ya no está conectado.
 //
 // Módulo aislado: no toca el DOM. La UI se entera de los cambios con suscribirMotorAsignacion().
 // Está previsto moverlo a una Supabase Edge Function cuando se haga la UI de cadetes.
@@ -122,8 +124,9 @@ export function iniciarBusquedaCadete(idPedido) {
     esperandoDesde: null,
     modo: 'cercania',             // 'cercania': al más cercano | 'sin_distancia': por id_cad
     rechazosCercania: 0,          // ofertas por cercanía que terminaron sin aceptar (rechazo o sin respuesta)
-    canalUbicaciones: null,       // Presence 'cadetes-disponibles' (solo se escucha, no se hace track)
+    canalUbicaciones: null,       // Presence 'cadetes-disponibles': se mantiene toda la búsqueda (ubicación y conectividad)
     ubicacionesListas: false,     // llegó el primer estado de Presence (o el canal falló)
+    presenceConectado: false,     // true si Presence llegó a sincronizar alguna vez (si no, no es señal confiable)
     iniciadaEn: Date.now(),
     ui: null,
     latido: null,
@@ -393,7 +396,8 @@ function registrarOfertaTerminada(b, idCadete) {
   b.rechazosCercania++;
   if (b.rechazosCercania >= CONFIG_ASIGNACION.RECHAZOS_MAX_CERCANIA) {
     b.modo = 'sin_distancia';
-    desconectarUbicacionesCadetes(b); // ya no se usan
+    // El canal de Presence sigue abierto: ya no se usa para la distancia, pero sigue siendo la
+    // única forma confiable de saber quién está realmente conectado (ver ofrecerAlSiguienteCadete)
     console.log(`[Asignación] Pedido #${b.idPedido}: ${b.rechazosCercania} cadetes cercanos no lo tomaron, se asigna sin tener en cuenta la distancia.`);
   }
 }
@@ -408,19 +412,26 @@ async function ofrecerAlSiguienteCadete(b, pedido) {
   if (error) throw error;
   if (b.finalizada) return;
 
-  const sinIntentar = (cadetes || []).filter(c => !b.intentados.has(Number(c.id_cad)));
+  // Esperar el primer estado de Presence antes de decidir: sin él no se puede distinguir un cadete
+  // realmente conectado de una fila vieja en la BD (ej: cerró la app con estado_cad='ocupado' y quedó
+  // así para siempre, porque nada la limpia si no pasa por "Finalizar Turno")
+  const esperaRestanteMs = CONFIG_ASIGNACION.ESPERA_UBICACIONES_MS - (Date.now() - b.iniciadaEn);
+  if (!b.ubicacionesListas && esperaRestanteMs > 0) {
+    renderEstadoBusqueda(b, 'Buscando el cadete más cercano', 'Ubicando a los cadetes en turno');
+    return; // el primer sync de Presence (o el latido) vuelve a revisar
+  }
+
+  // Quién está realmente conectado ahora mismo, según Presence (null si Presence nunca llegó a
+  // sincronizar: ahí no hay señal confiable y se confía en estado_cad de la BD, como antes)
+  const conectados = leerIdsConectados(b);
+  const enTurno = conectados ? (cadetes || []).filter(c => conectados.has(Number(c.id_cad))) : (cadetes || []);
+
+  const sinIntentar = enTurno.filter(c => !b.intentados.has(Number(c.id_cad)));
   const libres = sinIntentar.filter(c => c.estado_cad === 'disponible');
   const ocupados = sinIntentar.filter(c => c.estado_cad !== 'disponible');
 
   // A) Hay cadetes libres que todavía no vieron el pedido: ofrecérselo a uno solo
   if (libres.length > 0) {
-    // Sin el primer estado de Presence todos parecerían estar sin ubicación y se ofrecería por id
-    const esperaRestanteMs = CONFIG_ASIGNACION.ESPERA_UBICACIONES_MS - (Date.now() - b.iniciadaEn);
-    if (b.modo === 'cercania' && !b.ubicacionesListas && esperaRestanteMs > 0) {
-      renderEstadoBusqueda(b, 'Buscando el cadete más cercano', 'Ubicando a los cadetes en turno');
-      return; // el primer sync de Presence (o el latido) vuelve a revisar
-    }
-
     const { cadete, distanciaKm } = elegirCadete(b, libres, pedido);
     const idCadete = Number(cadete.id_cad);
 
@@ -549,6 +560,23 @@ function elegirCadete(b, libres, pedido) {
   return elegido;
 }
 
+/**
+ * Set de id_cad presentes AHORA MISMO en Presence (conectividad, no ubicación: no exige coords_ts).
+ * @returns {Set<number>|null} null si Presence nunca llegó a sincronizar (canal caído): ahí no hay
+ *   señal confiable y hay que confiar en Cadetes.estado_cad de la BD, como antes de este chequeo.
+ */
+function leerIdsConectados(b) {
+  if (!b.presenceConectado || !b.canalUbicaciones) return null;
+  const ids = new Set();
+  for (const presencias of Object.values(b.canalUbicaciones.presenceState())) {
+    for (const p of presencias) {
+      const id = Number(p.id_cad);
+      if (id) ids.add(id);
+    }
+  }
+  return ids;
+}
+
 /** id_cad -> { lat, lng, ts } de los cadetes en Presence con GPS real (si tiene varias pestañas, el fix más nuevo) */
 function leerUbicacionesCadetes(b) {
   const ubicaciones = new Map();
@@ -569,9 +597,12 @@ function leerUbicacionesCadetes(b) {
   return ubicaciones;
 }
 
-// Solo escucha: sin track(), así el cliente no aparece como un cadete más en el canal
+// Solo escucha: sin track(), así el cliente no aparece como un cadete más en el canal. Se mantiene
+// conectado toda la búsqueda (también en modo 'sin_distancia'): además de la ubicación, es la única
+// forma confiable de saber quién sigue conectado de verdad (ver leerIdsConectados).
 async function conectarUbicacionesCadetes(b) {
-  const marcarListas = () => {
+  const marcarListas = (conectado) => {
+    if (conectado) b.presenceConectado = true;
     if (b.ubicacionesListas) return;
     b.ubicacionesListas = true;
     solicitarRevisionAsignacion(b);
@@ -583,23 +614,23 @@ async function conectarUbicacionesCadetes(b) {
       ? supabase.getChannels().filter(c => c.topic === `realtime:${CANAL_UBICACIONES_CADETES}`)
       : [];
     for (const ch of previos) await supabase.removeChannel(ch);
-    if (b.finalizada || b.modo !== 'cercania') return;
+    if (b.finalizada) return;
 
     const canal = supabase.channel(CANAL_UBICACIONES_CADETES);
     b.canalUbicaciones = canal;
     canal
-      // Solo importa el primero: después cada movimiento del GPS de un cadete dispara otro sync,
-      // y las ubicaciones se leen recién al elegir a quién ofrecer
-      .on('presence', { event: 'sync' }, marcarListas)
+      // Se dispara con el estado inicial (aunque esté vacío) y de nuevo con cada cambio: alcanza para
+      // saber quién está conectado; la ubicación se relee recién al elegir a quién ofrecer
+      .on('presence', { event: 'sync' }, () => marcarListas(true))
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn(`[Asignación] Pedido #${b.idPedido}: Presence '${CANAL_UBICACIONES_CADETES}' en ${status}, se ofrece sin ubicaciones.`, err);
-          marcarListas();
+          console.warn(`[Asignación] Pedido #${b.idPedido}: Presence '${CANAL_UBICACIONES_CADETES}' en ${status}, se ofrece confiando solo en la BD.`, err);
+          marcarListas(false);
         }
       });
   } catch (err) {
-    console.warn(`[Asignación] Pedido #${b.idPedido}: no se pudo escuchar la ubicación de los cadetes, se ofrece sin ubicaciones.`, err);
-    marcarListas();
+    console.warn(`[Asignación] Pedido #${b.idPedido}: no se pudo escuchar Presence, se ofrece confiando solo en la BD.`, err);
+    marcarListas(false);
   }
 }
 

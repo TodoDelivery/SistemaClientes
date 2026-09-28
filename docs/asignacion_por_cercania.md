@@ -12,8 +12,10 @@ que hay que saber para mantenerla.
 1. El pedido se ofrece **a un solo cadete por vez**, primero al **cadete libre más cercano al punto de retiro**.
 2. Si **3 cadetes seguidos** no lo toman (rechazan o no responden), se sigue ofreciendo **sin tener en cuenta
    la distancia**, en orden de `id_cad`, como hacía el motor antes.
-3. Quién está libre lo decide siempre la **BD** (`Cadetes.estado_cad = 'disponible'`). De Realtime solo se
-   toma la **ubicación**.
+3. Quién está libre lo decide siempre la **BD** (`Cadetes.estado_cad = 'disponible'`), pero solo cuenta si
+   ese cadete **sigue conectado** según Presence: si cerró la app sin "Finalizar Turno", su fila queda vieja
+   en la BD (por ejemplo en `'ocupado'`) y se descarta en vez de tratarla como un cadete real. Por eso el
+   canal de Presence se mantiene abierto **toda la búsqueda**, no solo mientras se mide distancia.
 
 ---
 
@@ -53,8 +55,9 @@ flowchart TD
    - Acepta → `asignado`, termina la búsqueda.
    - Rechaza, no responde en `TIMEOUT_OFERTA_MS` (20 s) o devuelve la oferta porque está ocupado → se anota,
      no se le vuelve a ofrecer en esta búsqueda y, si el modo es `cercania`, **suma un rechazo cercano**.
-7. **Al llegar a `RECHAZOS_MAX_CERCANIA` (3) rechazos cercanos** el motor pasa a `sin_distancia` y cierra el
-   canal de Presence (ya no lo necesita).
+7. **Al llegar a `RECHAZOS_MAX_CERCANIA` (3) rechazos cercanos** el motor pasa a `sin_distancia`. El canal de
+   Presence sigue abierto: ya no se usa para la distancia, pero sigue siendo la forma de saber quién está
+   realmente conectado.
 8. **Si no queda nadie libre**: espera hasta 60 s a que se libere un cadete ocupado; si no, cancela el pedido
    con el motivo correspondiente ("Todos los cadetes rechazaron el pedido", "Ningún cadete se liberó a tiempo",
    "No hay cadetes conectados").
@@ -80,6 +83,23 @@ se usa la presencia con el `coords_ts` más nuevo.
 
 > Si se cambia el nombre del canal o de `coords_ts`, hay que cambiarlo en **los dos repos**.
 > `npm run verificar` avisa si desaparecen del código de clientes.
+
+---
+
+## Quién cuenta como conectado
+
+`Cadetes.estado_cad` no se limpia solo: si el cadete cierra la app o pierde señal sin tocar "Finalizar
+Turno" (`SistemaCadetes/Templates/dashboard.html`), la fila se queda en `'disponible'` u `'ocupado'` para
+siempre. Para no ofrecerle (ni esperar a) un cadete que en realidad no está, el motor cruza la BD con quién
+sigue presente en el canal `cadetes-disponibles`:
+
+- Si Presence sincronizó alguna vez en esta búsqueda, solo se considera a los `id_cad` que siguen ahí. Un
+  cadete que desapareció de Presence se descarta aunque su fila diga `'disponible'` u `'ocupado'`.
+- Si Presence nunca llegó a conectar (falló el canal), no hay señal confiable y se confía en `estado_cad`
+  tal cual está en la BD, como hacía el motor antes de este chequeo.
+
+Por eso Presence se mantiene abierto **toda la búsqueda**, incluso después de pasar a modo `sin_distancia`
+(ahí ya no se usa para la distancia, pero sigue haciendo falta para esto).
 
 ---
 
@@ -112,9 +132,10 @@ reanuda y el contador vuelve a cero (igual que la lista de cadetes que ya rechaz
 | Caso | Qué pasa |
 |---|---|
 | Cadete sin permiso de GPS o sin señal todavía | Recibe ofertas igual, pero después de los que tienen ubicación |
-| Presence no conecta | Se ofrece igual a los 5 s: todos quedan "sin ubicación" y el orden es por `id_cad` |
-| Ningún cadete libre, pero hay ocupados | Espera hasta 60 s a que se libere uno; el primero que se libera recibe la oferta |
-| Nadie en turno | Se cancela al instante: "No hay cadetes conectados" |
+| Presence no conecta | Se ofrece igual a los 5 s confiando en `estado_cad` de la BD tal cual está, sin filtrar por conectividad; el orden es por `id_cad` |
+| Cadete cerró la app sin "Finalizar Turno" (`estado_cad` quedó viejo en la BD) | Se descarta: no cuenta ni como libre ni como ocupado |
+| Ningún cadete libre, pero hay ocupados **conectados** | Espera hasta 60 s a que se libere uno; el primero que se libera recibe la oferta |
+| Nadie conectado (aunque la BD tenga filas `'disponible'`/`'ocupado'` viejas) | Se cancela al instante: "No hay cadetes conectados" |
 | Varios pedidos del mismo comercio a la vez | Todos apuntan al mismo cadete cercano y la primera oferta que le llega queda abierta. Los otros motores lo ven `en_confirmacion` en la BD y pasan al siguiente más cercano; si alcanzaron a ofrecérselo, él lo devuelve como "ocupado" (cuenta como rechazo cercano) |
 | Presence llega tarde (después de la primera oferta) | Esa primera oferta sale por `id_cad`; las siguientes ya usan la ubicación |
 | El cliente cierra el seguimiento más de 30 min | Al volver, la búsqueda se cancela ("La búsqueda de cadete venció") en vez de ofrecerse tarde |

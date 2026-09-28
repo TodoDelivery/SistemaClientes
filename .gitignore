@@ -11,3 +11,5 @@ node_modules/
 Thumbs.db
 .vscode/*
 !.vscode/settings.json
+
+templates_pruebas
