@@ -1,7 +1,7 @@
 // =========================================================================
 // SESIÓN DEL CLIENTE Y CONSULTAS COMUNES (APP CLIENTES)
 // =========================================================================
-// Usado por dashboard.html, crear_pedido.html, pedido_activo.html y configuracion.html.
+// Usado por home.html, dashboard.html, crear_pedido.html, pedido_activo.html y configuracion.html.
 // login_google.html es la única página que crea la fila en 'Clientes' (pide el teléfono).
 import { supabase } from './conexion_supabase.js';
 import { ESTADOS_BUSQUEDA, esBusquedaVencida, vencerBusquedasAbandonadas } from './script_asignacion.js';
@@ -12,6 +12,7 @@ export const PAGINAS = {
       ? '../index.html'
       : 'index.html';
   },
+  home: 'home.html',
   dashboard: 'dashboard.html',
   crearPedido: 'crear_pedido.html',
   pedidoActivo: 'pedido_activo.html',

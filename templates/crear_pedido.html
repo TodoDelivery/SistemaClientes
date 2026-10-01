@@ -24,15 +24,18 @@
 
   <header id="appBar"></header>
 
-  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-3 text-sm font-semibold text-brand-textMuted">
-    <svg class="animate-spin h-6 w-6 text-brand-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-    </svg>
-    Cargando...
+  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-5" role="status" aria-live="polite">
+    <div class="logo-cargando" aria-hidden="true">
+      <img class="logo-cargando-base" src="../images/Logo_svg.svg" alt="" />
+      <img class="logo-cargando-relleno" src="../images/Logo_svg.svg" alt="" />
+    </div>
+    <p class="text-center">
+      <span class="block text-base font-extrabold text-brand-dark">Cargando</span>
+      <span class="block text-sm font-semibold text-brand-textMuted">Pedir</span>
+    </p>
   </div>
 
-  <main id="contenidoPagina" class="hidden mx-auto w-full max-w-xl px-4 pt-4 espacio-nav-accion flex flex-col gap-4">
+  <main id="contenidoPagina" class="hidden mx-auto w-full max-w-xl px-4 pt-4 espacio-nav flex flex-col gap-4">
 
     <!-- Pedido en curso -->
     <a id="avisoPedidoEnCurso" href="#"
@@ -126,18 +129,26 @@
       <section class="bg-brand-surface border border-brand-border rounded-3xl p-4 space-y-4 shadow-card" aria-labelledby="tituloEnvio">
         <h2 id="tituloEnvio" class="text-base font-extrabold text-brand-dark">¿Qué enviamos?</h2>
 
-        <!-- min-w-0: un fieldset no se achica por debajo de su contenido y rompería el scroll de los chips -->
-        <fieldset class="min-w-0">
-          <legend class="sr-only">Tipo de paquete</legend>
-          <div id="chipsTipoPaquete" class="flex gap-2 overflow-x-auto sin-scrollbar -mx-4 px-4 pb-1"></div>
-        </fieldset>
+        <div>
+          <label for="inpTipoPaquete" class="block text-sm font-bold text-brand-dark mb-1.5">Tipo de paquete <span class="font-semibold text-brand-textMuted">(opcional)</span></label>
+          <div class="flex gap-2">
+            <button id="btnEmojiPedido" type="button" aria-label="Elegir un emoji para el pedido" aria-expanded="false" aria-controls="panelEmojis"
+              class="w-12 h-12 shrink-0 rounded-xl bg-brand-surfaceLight border border-brand-border text-2xl flex items-center justify-center hover:border-brand-accent/60 focus:outline-none focus-visible:border-brand-accent transition-colors">🙂</button>
+            <input id="inpTipoPaquete" type="text" maxlength="60" autocomplete="off" enterkeyhint="next"
+              placeholder="Ej: Comida, bolsa, caja chica"
+              class="min-w-0 flex-1 h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-brand-dark placeholder:text-brand-textMuted/70 focus:outline-none focus:bg-white focus:border-brand-accent transition-colors" />
+          </div>
+          <div id="panelEmojis" class="hidden mt-2 p-2 rounded-2xl border border-brand-border bg-white shadow-card">
+            <div id="gridEmojis" class="grid grid-cols-8 gap-1" role="listbox" aria-label="Emojis para el pedido"></div>
+            <button id="btnQuitarEmoji" type="button" class="mt-2 w-full h-9 rounded-xl text-sm font-bold text-brand-textMuted hover:bg-brand-surfaceLight transition-colors">Sin emoji</button>
+          </div>
+        </div>
 
         <div>
-          <label for="inpInformPedido" class="block text-sm font-bold text-brand-dark mb-1.5">Detalle o comercio</label>
+          <label for="inpInformPedido" class="block text-sm font-bold text-brand-dark mb-1.5">Detalle o comercio <span class="font-semibold text-brand-textMuted">(opcional)</span></label>
           <input id="inpInformPedido" type="text" maxlength="200" autocomplete="off" enterkeyhint="done"
-            placeholder="Ej: 1 docena de empanadas" aria-describedby="errorInform"
-            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-brand-dark placeholder:text-brand-textMuted/70 focus:outline-none focus:bg-white focus:border-brand-accent aria-[invalid=true]:border-brand-danger transition-colors" />
-          <p id="errorInform" class="hidden mt-1.5 text-sm font-semibold text-brand-danger"></p>
+            placeholder="Ej: 1 docena de empanadas"
+            class="w-full h-12 px-4 rounded-xl bg-brand-surfaceLight border border-brand-border text-base text-brand-dark placeholder:text-brand-textMuted/70 focus:outline-none focus:bg-white focus:border-brand-accent transition-colors" />
         </div>
       </section>
 
@@ -167,22 +178,15 @@
         </dl>
         <p class="mt-3 text-xs text-brand-textMuted">💵 Se paga en efectivo al cadete. La distancia se estima en línea recta.</p>
         <p id="labelSimulacionNocturna" class="hidden mt-2 text-xs font-mono text-amber-500">DEV: tarifa nocturna simulada</p>
+
+        <!-- Acción final, dentro del contenedor -->
+        <p id="accionDetalle" class="mt-4 text-center text-xs font-semibold text-brand-textMuted"></p>
+        <button id="btnCrearPedido" type="submit"
+          class="mt-2 w-full h-14 px-5 rounded-2xl bg-brand-accent text-white font-extrabold text-base flex items-center justify-center gap-2 shadow-btn hover:shadow-btn-hover active:scale-[0.98] transition-all disabled:opacity-70">
+        </button>
       </section>
     </form>
   </main>
-
-  <!-- Barra de acción fija sobre la navegación -->
-  <div id="barraAccion" class="hidden fixed inset-x-0 sobre-nav z-[1050] px-4 pb-3 pointer-events-none">
-    <div class="pointer-events-auto mx-auto max-w-xl flex items-center gap-3 p-2.5 pl-4 rounded-2xl bg-white/95 backdrop-blur-xl border border-brand-border shadow-xl">
-      <div class="min-w-0 flex-1">
-        <p id="accionDetalle" class="text-xs font-semibold text-brand-textMuted truncate"></p>
-        <p id="accionTotal" class="text-xl font-black text-brand-dark tracking-tight"></p>
-      </div>
-      <button id="btnCrearPedido" type="submit" form="formCrearPedido"
-        class="h-12 px-5 rounded-xl bg-brand-accent text-white font-extrabold text-sm flex items-center gap-2 shadow-btn hover:shadow-btn-hover active:scale-[0.98] transition-all disabled:opacity-70 shrink-0">
-      </button>
-    </div>
-  </div>
 
   <nav id="barraInferior"></nav>
 
@@ -194,10 +198,10 @@
     } from '../scripts/sesion_cliente.js';
     import {
       montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar, hojaDatosFavorita,
-      estadoUI, formatearPesos, icono, emojiFavorita, TIPOS_PAQUETE
+      estadoUI, formatearPesos, icono, emojiFavorita
     } from '../scripts/ui_cliente.js';
     import {
-      CENTRO_MAPA, buscarDirecciones, direccionDeCoords, direccionEnCache, recordarDireccion, claveCoords, distanciaMetros
+      CENTRO_MAPA, buscarDirecciones, direccionDeCoords, direccionEnCache, recordarDireccion, claveCoords, distanciaMetros, rutaPorCalles
     } from '../scripts/direcciones.js';
 
     // Valores por defecto si Datos_cotiz no responde o no tiene filas
@@ -243,12 +247,11 @@
 
         const cargaCotiz = cargarDatosCotizacion();
         montarLayoutCliente(clienteActual, 'solicitar', 'Pedir envío');
-        $('barraAccion').classList.remove('hidden');
         $('labelSimulacionNocturna').classList.toggle('hidden', !SIMULAR_NOCTURNO);
         document.querySelectorAll('[data-gps]').forEach(btn => { btn.innerHTML = icono('gps', 'w-6 h-6'); });
         favoritas = clienteActual.favoritas;
         renderChipsFavoritas();
-        renderChipsTipoPaquete();
+        iniciarSelectorEmoji();
         setBotonCrear(false);
 
         inicializarMapaPicker();
@@ -301,7 +304,6 @@
         if (!e.target.closest('#zonaBusqueda')) ocultarResultados();
       });
 
-      $('inpInformPedido').addEventListener('input', () => mostrarErrorInform(''));
     }
 
     async function mostrarPedidoEnCurso() {
@@ -317,17 +319,6 @@
       } catch (err) {
         console.warn('No se pudo consultar el pedido en curso:', err);
       }
-    }
-
-    function renderChipsTipoPaquete() {
-      $('chipsTipoPaquete').innerHTML = TIPOS_PAQUETE.map((t, i) => `
-        <label class="relative shrink-0 cursor-pointer">
-          <input type="radio" name="tipoPaquete" value="${t.valor}" class="peer sr-only" ${i === 0 ? 'checked' : ''} />
-          <span class="flex items-center gap-2 h-11 px-4 rounded-full border border-brand-border bg-brand-surfaceLight text-sm font-bold text-brand-textMuted transition-all peer-checked:bg-brand-accent peer-checked:border-brand-accent peer-checked:text-white peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-brand-accent peer-focus-visible:ring-offset-2">
-            <span aria-hidden="true">${t.emoji}</span>${t.texto}
-          </span>
-        </label>
-      `).join('');
     }
 
     // -------------------------------------------------------------------------
@@ -399,14 +390,30 @@
       });
     }
 
-    function actualizarRuta() {
-      if (!pickerMap || !coords.origen || !coords.destino) return;
-      const latlngs = [[coords.origen.lat, coords.origen.lng], [coords.destino.lat, coords.destino.lng]];
+    const ESTILO_RUTA_CALLES = { color: '#FF5A1F', weight: 5, dashArray: null, opacity: 0.9 };
+    const ESTILO_RUTA_RECTA = { color: '#FF5A1F', weight: 4, dashArray: '8, 8', opacity: 0.9 };
+    let pedidoRuta = 0; // descarta respuestas de rutas viejas si el usuario movió un punto mientras se calculaba
+
+    function pintarRuta(latlngs, estilo) {
       if (routeLine) {
-        routeLine.setLatLngs(latlngs);
+        routeLine.setLatLngs(latlngs).setStyle(estilo);
       } else {
-        routeLine = L.polyline(latlngs, { color: '#FF5A1F', weight: 4, dashArray: '8, 8', opacity: 0.9 }).addTo(pickerMap);
+        routeLine = L.polyline(latlngs, estilo).addTo(pickerMap);
       }
+    }
+
+    async function actualizarRuta() {
+      if (!pickerMap || !coords.origen || !coords.destino) return;
+      const origen = coords.origen;
+      const destino = coords.destino;
+      const recta = [[origen.lat, origen.lng], [destino.lat, destino.lng]];
+      const turno = ++pedidoRuta;
+
+      // Línea recta mientras se calcula el trazado por calles
+      pintarRuta(recta, ESTILO_RUTA_RECTA);
+      const porCalles = await rutaPorCalles(origen, destino);
+      if (turno !== pedidoRuta || !porCalles) return;
+      pintarRuta(porCalles, ESTILO_RUTA_CALLES);
     }
 
     function encuadrarMapa(punto) {
@@ -610,6 +617,45 @@
       return favoritas.find(f => distanciaMetros(c, f) <= RADIO_FAVORITA_M) || null;
     }
 
+    // -------------------------------------------------------------------------
+    // EMOJI DEL PEDIDO
+    // -------------------------------------------------------------------------
+    const EMOJIS_PEDIDO = [
+      '🍔', '🍕', '🌭', '🌮', '🍟', '🍗', '🥪', '🍝',
+      '🥗', '🍣', '🍰', '🍦', '☕', '🍺', '🍾', '🥤',
+      '💊', '🛒', '🥖', '🥩', '🍎', '🛍️', '🎁', '💐',
+      '📦', '📄', '📚', '🔑', '👕', '📱', '🧴', '🐶'
+    ];
+    let emojiElegido = '';
+
+    function iniciarSelectorEmoji() {
+      const panel = $('panelEmojis');
+      const boton = $('btnEmojiPedido');
+
+      $('gridEmojis').innerHTML = EMOJIS_PEDIDO.map(e => `
+        <button type="button" data-emoji="${e}" role="option" aria-label="${e}"
+          class="h-10 rounded-xl text-2xl flex items-center justify-center hover:bg-brand-surfaceLight active:scale-90 transition-all">${e}</button>
+      `).join('');
+
+      const elegir = (emoji) => {
+        emojiElegido = emoji;
+        boton.textContent = emoji || '🙂';
+        boton.classList.toggle('border-brand-accent', Boolean(emoji));
+        togglePanel(false);
+      };
+      const togglePanel = (abrir) => {
+        panel.classList.toggle('hidden', !abrir);
+        boton.setAttribute('aria-expanded', String(abrir));
+      };
+
+      boton.addEventListener('click', () => togglePanel(panel.classList.contains('hidden')));
+      $('btnQuitarEmoji').addEventListener('click', () => elegir(''));
+      $('gridEmojis').addEventListener('click', (e) => {
+        const opcion = e.target.closest('[data-emoji]');
+        if (opcion) elegir(opcion.dataset.emoji);
+      });
+    }
+
     function renderChipsFavoritas() {
       $('filaFavoritas').classList.toggle('hidden', favoritas.length === 0);
       const contenedor = $('chipsFavoritas');
@@ -766,7 +812,6 @@
         $('cotizTarifaNocturna').textContent = '—';
         $('cotizTotal').textContent = '—';
         $('textoDistancia').textContent = '';
-        $('accionTotal').textContent = '$ —';
         $('accionDetalle').textContent = !coords.origen ? 'Falta ubicar el retiro' : 'Falta ubicar la entrega';
         return;
       }
@@ -777,7 +822,6 @@
       $('cotizTarifaNocturna').textContent = cot.esNocturno ? `+${formatearPesos(cot.recargo)}` : formatearPesos(0);
       $('cotizTotal').textContent = formatearPesos(cot.total);
       $('textoDistancia').textContent = `${km} km aprox.`;
-      $('accionTotal').textContent = formatearPesos(cot.total);
       $('accionDetalle').textContent = `${cot.esNocturno ? '🌙 Tarifa nocturna' : 'Tarifa estándar'} · ${km} km · Efectivo`;
     }
 
@@ -796,13 +840,10 @@
         return;
       }
 
+      // Ambos son opcionales: sin tipo se guarda "Paquete" y sin detalle queda vacío (la app muestra "Envío").
+      // El emoji elegido va como prefijo del tipo ("🍕 Pizza")
       const inform = $('inpInformPedido').value.trim();
-      if (!inform) {
-        mostrarErrorInform('Contanos qué hay que llevar o de qué comercio se retira');
-        $('inpInformPedido').focus();
-        return;
-      }
-      const tipo = document.querySelector('input[name="tipoPaquete"]:checked')?.value || TIPOS_PAQUETE[0].valor;
+      const tipo = [emojiElegido, $('inpTipoPaquete').value.trim() || 'Paquete'].filter(Boolean).join(' ');
 
       creandoPedido = true;
       let redirigiendo = false;
@@ -894,18 +935,11 @@
       }
     }
 
-    function mostrarErrorInform(mensaje) {
-      const error = $('errorInform');
-      error.textContent = mensaje;
-      error.classList.toggle('hidden', !mensaje);
-      $('inpInformPedido').setAttribute('aria-invalid', String(Boolean(mensaje)));
-    }
-
     function setBotonCrear(cargando, texto = '') {
       const btn = $('btnCrearPedido');
       btn.disabled = cargando;
       if (!cargando) {
-        btn.innerHTML = `<span>Pedir cadete</span>${icono('flecha', 'w-5 h-5')}`;
+        btn.innerHTML = `<span>Realizar pedido</span>${icono('flecha', 'w-5 h-5')}`;
         return;
       }
       btn.innerHTML = `

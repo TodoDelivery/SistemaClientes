@@ -28,11 +28,12 @@ Las páginas viven en `templates/`, los módulos en `scripts/` y el CSS en `styl
 Cada enlace es relativo **al archivo que lo escribe**: desde una página, un módulo es `../scripts/archivo.js`, el CSS es `../styles/estilos_cliente.css` y otra página es `pagina.html` (todas son hermanas dentro de `templates/`). Si se mueve un archivo de carpeta hay que corregir cada import y cada enlace: `npm run verificar` lo detecta antes de que llegue al navegador.
 
 ```
-├── index.html              Entrada: redirige a templates/dashboard.html
+├── index.html              Entrada: redirige a templates/home.html
 ├── 404.html                Página de error (Netlify la busca en la raíz publicada)
 │
 ├── templates/
 │   ├── login_google.html   Login con Google y alta del cliente (pide teléfono la primera vez)
+│   ├── home.html           "Home": resumen mensual, gráficos y estadísticas del cliente
 │   ├── dashboard.html      "Mis pedidos": pedidos en curso + historial
 │   ├── crear_pedido.html   "Pedir": mapa, direcciones, favoritas, cotización y alta del pedido
 │   ├── pedido_activo.html  "Seguimiento": estado, cadete, GPS, chat. CORRE EL MOTOR DE ASIGNACIÓN

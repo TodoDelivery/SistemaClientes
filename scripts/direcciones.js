@@ -80,6 +80,35 @@ export async function buscarDirecciones(texto, limites = null) {
     });
 }
 
+// -------------------------------------------------------------------------
+// RUTA POR CALLES (OSRM público / datos de OpenStreetMap)
+// -------------------------------------------------------------------------
+const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
+const cacheRutas = new Map(); // "origen>destino" -> [[lat, lng], ...] | null
+
+/**
+ * Trazado por calles entre dos puntos, como lista de [lat, lng].
+ * Devuelve null si no hay ruta o falla el servicio (quien llama dibuja la línea recta).
+ */
+export async function rutaPorCalles(origen, destino) {
+  const clave = `${claveCoords(origen)}>${claveCoords(destino)}`;
+  if (cacheRutas.has(clave)) return cacheRutas.get(clave);
+
+  try {
+    const tramo = `${origen.lng},${origen.lat};${destino.lng},${destino.lat}`;
+    const respuesta = await fetch(`${OSRM_URL}/${tramo}?overview=full&geometries=geojson`);
+    if (!respuesta.ok) throw new Error(`OSRM respondió ${respuesta.status}`);
+    const datos = await respuesta.json();
+    const puntos = datos?.routes?.[0]?.geometry?.coordinates;
+    const ruta = Array.isArray(puntos) && puntos.length >= 2 ? puntos.map(([lng, lat]) => [lat, lng]) : null;
+    cacheRutas.set(clave, ruta);
+    return ruta;
+  } catch (err) {
+    console.warn('[Ruta] No se pudo trazar por calles, se usa línea recta:', err.message);
+    return null; // sin cachear: se reintenta la próxima vez
+  }
+}
+
 /** Distancia aproximada en metros (suficiente para comparar puntos cercanos) */
 export function distanciaMetros(a, b) {
   const dx = (b.lng - a.lng) * 111320 * Math.cos(a.lat * Math.PI / 180);

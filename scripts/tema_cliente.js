@@ -9,9 +9,9 @@ tailwind.config = {
       colors: {
         brand: {
           bg: '#F8FAFC',
-          surface: '#FFFFFF',
-          surfaceLight: '#F1F5F9',
-          surfaceHover: '#E2E8F0',
+          surface: '#F1F4F8',
+          surfaceLight: '#E6EBF1',
+          surfaceHover: '#D9E0E8',
           accent: '#FF5A1F',
           accentHover: '#E14A0F',
           accentLight: '#FFF2EB',

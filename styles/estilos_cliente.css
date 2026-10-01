@@ -3,11 +3,12 @@
    ========================================================================= */
 :root {
   --alto-nav: 64px;
+  --margen-nav: 12px; /* separación de la barra flotante con el borde inferior */
   color-scheme: light;
   --primary: #FF5A1F;
   --primary-dark: #E14A0F;
   --primary-soft: #FFB088;
-  --bg-page: #F8FAFC;
+  --bg-page: #D5DCE5;
   --bg-surface: #FFFFFF;
   --border-color: #E5E7EB;
   --text-primary: #111827;
@@ -52,17 +53,7 @@ body {
 
 /* Contenido que no queda tapado por la barra inferior */
 .espacio-nav {
-  padding-bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom) + 24px);
-}
-
-/* Contenido que no queda tapado por la barra inferior + la barra de acción fija */
-.espacio-nav-accion {
-  padding-bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom) + 112px);
-}
-
-/* Elemento fijo apoyado sobre la barra inferior */
-.sobre-nav {
-  bottom: calc(var(--alto-nav) + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--alto-nav) + var(--margen-nav) + env(safe-area-inset-bottom) + 44px);
 }
 
 .toasts-top {
@@ -219,4 +210,43 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #CBD5E1;
   border-radius: 9999px;
+}
+
+
+/* ---- Pantalla de carga: el logo se va llenando de color ---- */
+.logo-cargando {
+  position: relative;
+  width: 132px;
+  aspect-ratio: 970 / 760;
+}
+
+.logo-cargando img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.logo-cargando-base {
+  filter: grayscale(1);
+  opacity: 0.22;
+}
+
+.logo-cargando-relleno {
+  animation: llenar-logo 1.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes llenar-logo {
+  0% { clip-path: inset(100% 0 0 0); opacity: 1; }
+  70% { clip-path: inset(0 0 0 0); opacity: 1; }
+  88% { clip-path: inset(0 0 0 0); opacity: 1; }
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-cargando-relleno {
+    animation: none;
+    clip-path: none;
+  }
 }

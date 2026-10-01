@@ -21,12 +21,15 @@
 
   <header id="appBar"></header>
 
-  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-3 text-sm font-semibold text-brand-textMuted">
-    <svg class="animate-spin h-6 w-6 text-brand-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-    </svg>
-    Cargando...
+  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-5" role="status" aria-live="polite">
+    <div class="logo-cargando" aria-hidden="true">
+      <img class="logo-cargando-base" src="../images/Logo_svg.svg" alt="" />
+      <img class="logo-cargando-relleno" src="../images/Logo_svg.svg" alt="" />
+    </div>
+    <p class="text-center">
+      <span class="block text-base font-extrabold text-brand-dark">Cargando</span>
+      <span class="block text-sm font-semibold text-brand-textMuted">Mis pedidos</span>
+    </p>
   </div>
 
   <main id="contenidoPagina" class="hidden mx-auto w-full max-w-xl px-4 pt-5 espacio-nav flex flex-col gap-6">

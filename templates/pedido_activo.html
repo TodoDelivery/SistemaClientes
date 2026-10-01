@@ -24,12 +24,15 @@
 
   <header id="appBar"></header>
 
-  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-3 text-sm font-semibold text-brand-textMuted">
-    <svg class="animate-spin h-6 w-6 text-brand-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-    </svg>
-    Cargando...
+  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-5" role="status" aria-live="polite">
+    <div class="logo-cargando" aria-hidden="true">
+      <img class="logo-cargando-base" src="../images/Logo_svg.svg" alt="" />
+      <img class="logo-cargando-relleno" src="../images/Logo_svg.svg" alt="" />
+    </div>
+    <p class="text-center">
+      <span class="block text-base font-extrabold text-brand-dark">Cargando</span>
+      <span class="block text-sm font-semibold text-brand-textMuted">Seguimiento</span>
+    </p>
   </div>
 
   <main id="contenidoPagina" class="hidden mx-auto w-full max-w-xl px-4 pt-4 espacio-nav flex flex-col gap-4">
@@ -58,14 +61,6 @@
       <section id="contenedorMapaSeguimiento" aria-label="Mapa del recorrido"
         class="relative isolate h-[34dvh] min-h-[220px] max-h-[340px] rounded-3xl overflow-hidden border border-brand-border bg-slate-100 shadow-card">
         <div id="mapaSeguimiento" class="absolute inset-0"></div>
-        <button id="btnCentrarMapa" type="button" aria-label="Centrar el mapa en el recorrido" title="Centrar mapa"
-          class="absolute bottom-3 right-3 z-[500] w-11 h-11 rounded-full bg-white/95 backdrop-blur border border-brand-border text-brand-dark flex items-center justify-center shadow-md hover:bg-brand-surfaceLight transition-colors">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4" />
-            <circle cx="12" cy="12" r="2.5" />
-          </svg>
-        </button>
       </section>
 
       <!-- Estado del pedido -->
@@ -200,9 +195,10 @@
       suscribirMotorAsignacion
     } from '../scripts/script_asignacion.js';
     import { requerirCliente, buscarPedidoEnCurso, registrarLimpiezaAntesDeSalir } from '../scripts/sesion_cliente.js';
+    import { rutaPorCalles } from '../scripts/direcciones.js';
     import {
       montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar,
-      formatearPesos, formatearFechaPedido, emojiPaquete, iniciales
+      formatearPesos, formatearFechaPedido, emojiPaquete, textoPaquete, iniciales
     } from '../scripts/ui_cliente.js';
 
     const ESTADOS_CON_CADETE = ['asignado', 'en_camino_entrega', 'entregado', 'rendido'];
@@ -306,7 +302,6 @@
 
       $('btnIrAlChat').addEventListener('click', irAlChat);
       $('btnCancelarPedido').addEventListener('click', handleCancelarPedido);
-      $('btnCentrarMapa').addEventListener('click', () => encuadrarMapa());
 
       // Mensajes no leídos: se cuentan mientras el chat no está a la vista
       new IntersectionObserver(([entrada]) => {
@@ -354,7 +349,7 @@
       $('trackingPanel').classList.remove('hidden');
       $('labelIdPedido').textContent = `#${pedido.id_pedido}`;
       $('labelInformPedido').textContent = pedido.inform_pedido || 'Envío';
-      $('labelTipoFecha').textContent = [pedido.tipo_paquete, formatearFechaPedido(pedido.fecha_pedido)].filter(Boolean).join(' · ');
+      $('labelTipoFecha').textContent = [textoPaquete(pedido.tipo_paquete), formatearFechaPedido(pedido.fecha_pedido)].filter(Boolean).join(' · ');
       $('labelCostePedido').textContent = formatearPesos(pedido.coste_pedido);
       $('emojiPaquete').textContent = emojiPaquete(pedido.tipo_paquete);
 
@@ -654,7 +649,11 @@
 
       L.marker(org, { icon: crearIconoMapa('A', 'bg-emerald-600 text-white shadow-emerald-500/40'), interactive: false }).addTo(mapaSeguimiento);
       L.marker(dest, { icon: crearIconoMapa('B', 'bg-brand-accent text-white shadow-brand-accent/40'), interactive: false }).addTo(mapaSeguimiento);
-      L.polyline([org, dest], { color: '#FF5A1F', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(mapaSeguimiento);
+      // Línea recta hasta que llega el trazado por calles
+      const lineaRuta = L.polyline([org, dest], { color: '#FF5A1F', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(mapaSeguimiento);
+      rutaPorCalles({ lat: org[0], lng: org[1] }, { lat: dest[0], lng: dest[1] }).then(porCalles => {
+        if (porCalles) lineaRuta.setLatLngs(porCalles).setStyle({ weight: 5, dashArray: null, opacity: 0.9 });
+      });
 
       puntosRuta = [org, dest];
       encuadrarMapa();
