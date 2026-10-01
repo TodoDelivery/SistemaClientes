@@ -6,6 +6,7 @@
 // y <nav id="barraInferior">; montarLayoutCliente() los completa.
 import { esBusquedaVencida } from './script_asignacion.js';
 import { PAGINAS } from './sesion_cliente.js';
+import { iniciarAvisoInstalacion } from './pwa.js';
 
 // -------------------------------------------------------------------------
 // CATÁLOGOS
@@ -164,6 +165,7 @@ export function montarLayoutCliente(cliente, pestanaActiva, titulo) {
 
   document.getElementById('cargandoPagina')?.classList.add('hidden');
   document.getElementById('contenidoPagina')?.classList.remove('hidden');
+  iniciarAvisoInstalacion(); // en el celular ofrece instalar la app (PWA)
   return { acciones: document.getElementById('accionesAppBar') };
 }
 

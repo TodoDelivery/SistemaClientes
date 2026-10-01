@@ -104,7 +104,7 @@ Los datos de conexión están en [`scripts/conexion_supabase.js`](scripts/conexi
 | `Clientes` | `id_cliente, nombre_cliente, telefono_cliente, f_loggueo_cliente, ubicaciones_favs` | INSERT de su fila; UPDATE de `nombre_cliente`, `telefono_cliente`, `ubicaciones_favs` |
 | `Pedidos` | `*` de sus pedidos | INSERT; UPDATE de `estado_pedido`, `id_cadete` (motor de asignación) |
 | `Cadetes` | `id_cad, nombre_cad, alias_cad, estado_cad, telef_cad, vehiculo_cad, patente` | — |
-| `Datos_cotiz` | `bajada_band, tarifa_km, porc_tarif_dinamica` (primera fila) | — |
+| `Datos_cotiz` | `bajada_band, tarifa_km, porc_tarif_dinamica` (primera fila; la columna `Porc_Comision` es de cadetes y admin) | — |
 
 `ubicaciones_favs` es `jsonb` con este formato (máximo 10):
 

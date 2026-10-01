@@ -68,6 +68,7 @@ Estructura de navegación del prototipo: 3 pestañas → "Solicitar Envío", "Se
 - Para mostrar el cadete asignado: `id_cad, nombre_cad, alias_cad, telef_cad, vehiculo_cad, patente`.
 
 **Datos_cotiz**: `bajada_band`, `tarifa_km`, `porc_tarif_dinamica` (se usa la primera fila).
+Además tiene `Porc_Comision` (float8, 40 por defecto): % de cada pedido que el cadete rinde a la empresa; su ganancia es el resto. Lo edita el admin en Dashboard-Admin → Ajustes y lo leen la app de cadetes y la Caja del dashboard. La app de clientes no lo usa.
 
 ### Estados de `Pedidos.estado_pedido`
 
