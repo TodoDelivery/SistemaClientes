@@ -43,6 +43,7 @@ Cada enlace es relativo **al archivo que lo escribe**: desde una página, un mó
 │   ├── conexion_supabase.js  Cliente de Supabase (URL + clave pública)
 │   ├── script_asignacion.js  Motor de asignación de cadetes (sin DOM; avisa por eventos)
 │   ├── sesion_cliente.js     Sesión, datos del cliente, favoritas, consultas comunes
+│   ├── chat_pedido.js        Historial del chat: mensajes en vivo + guardado en Pedidos.Chat_pedido
 │   ├── ui_cliente.js         Barra superior e inferior, toasts, hojas modales, formatos, íconos
 │   ├── direcciones.js        Búsqueda de direcciones y dirección de un punto (Nominatim)
 │   ├── tema_cliente.js       Colores y fuente de Tailwind
@@ -63,7 +64,7 @@ Qué importa cada página:
 |---|---|
 | todas menos login | `sesion_cliente.js` + `ui_cliente.js` |
 | `crear_pedido.html` | + `script_asignacion.js` (cancelar pedidos viejos) + `direcciones.js` |
-| `pedido_activo.html` | + `script_asignacion.js` (motor completo) |
+| `pedido_activo.html` | + `script_asignacion.js` (motor completo) + `chat_pedido.js` |
 | `configuracion.html` | + `direcciones.js` |
 
 ---
@@ -178,8 +179,10 @@ La especificación completa está en [`docs/contrato_app_cadetes.md`](docs/contr
 | `pedido-en-curso-{id}` | `cambio_estado_pedido` | Cadete → Cliente | `{ id_pedido, id_cadete, estado_pedido, patente, vehiculo, timestamp }` |
 | `pedido-en-curso-{id}` | `cadete_conectado` | Cadete → Cliente | `{ id_pedido, id_cadete, patente, vehiculo, timestamp }` |
 | `pedido-en-curso-{id}` | `ubicacion_cadete` | Cadete → Cliente | `{ id_pedido, id_cadete, patente, vehiculo, coords: { lat, lng, accuracy, heading, speed, timestamp } }` |
-| `pedido-en-curso-{id}` | `mensaje_chat` | ambos | `{ id_pedido, id_emisor, id_receptor, remitente, texto, hora: 'HH:MM', timestamp }` |
+| `pedido-en-curso-{id}` | `mensaje_chat` | ambos | `{ id_mensaje, id_pedido, id_emisor, id_receptor, remitente, texto, hora: 'HH:MM', timestamp }` |
 | `cadetes-disponibles` | Presence (`track`) | Cadete → todos | `{ id_cad, nombre, coords: { lat, lng }, coords_ts, estado_cad, patente, vehiculo_cad }` |
+
+**Chat guardado:** cada `mensaje_chat` queda además en `Pedidos.Chat_pedido` (texto con un array JSON de esos mensajes, sin `id_pedido`). Lo escriben las dos apps con `chat_pedido.js`, que está **copiado en los dos repos**: se cambian juntos.
 
 **Tiempos:** la oferta al cadete vence a los `TIMEOUT_OFERTA_MS = 20000` (20 s). Tiene que ser **mayor** que el timer del modal del cadete (15 s).
 
@@ -222,6 +225,7 @@ Con 2 o 3 sesiones de cadete abiertas en la app de cadetes:
 
 1. Pedido nuevo: se ofrece a un cadete por vez, primero al más cercano al retiro; al aceptar se ve cadete, patente, GPS y chat.
    Si los 3 más cercanos rechazan, se sigue por `id_cad`.
+   Chat: recargar el seguimiento y ver que los mensajes siguen ahí; escribir con la app del cadete cerrada y ver que le aparecen al abrir el viaje.
 2. Todos rechazan → cancelado con "Todos los cadetes rechazaron el pedido".
 3. Ningún cadete en turno → cancelado con "No hay cadetes conectados".
 4. El cadete no responde → a los 20 s pasa al siguiente.
@@ -254,7 +258,7 @@ Después de actualizar: `npm run verificar` y las pruebas manuales.
 - **Al retomar una búsqueda pausada** se puede volver a ofrecer a un cadete que ya había rechazado: el registro de rechazos vive en memoria. Por lo mismo, la cuenta de rechazos por cercanía vuelve a cero. Se resuelve con la Edge Function.
 - **Ubicación de los cadetes a la vista del cliente:** para asignar por cercanía, el navegador del cliente escucha Presence de `cadetes-disponibles`, que trae la posición GPS de todos los cadetes en turno. El canal ya era público (el panel de admin lo usa), pero con el motor en el cliente cualquier cliente puede leer esas posiciones. Se resuelve con la Edge Function o pasando el canal a privado.
 - **El total se calcula en el cliente** (`coste_pedido`). Con backend, recalcularlo del lado del servidor.
-- **El chat no se guarda**: va por broadcast y se pierde al recargar.
+- **El chat se guarda en `Pedidos.Chat_pedido`** además de ir por broadcast. Cliente y cadete escriben la misma columna sin bloqueo, así que `chat_pedido.js` guarda siempre la unión de mensajes y la repara si una escritura pisó a la otra. Con backend conviene pasarlo a una función que agregue el mensaje de forma atómica.
 - **Direcciones:** se usa Nominatim (OpenStreetMap), un servicio público con máximo 1 consulta por segundo y sin autocompletado. Está bien para bajo volumen; con muchos usuarios hay que pasar a un proveedor con contrato.
 - **Tailwind por CDN** muestra un aviso en la consola de que no es para producción. Funciona igual; a futuro conviene compilarlo.
 - **Teléfonos de prueba:** `549264123456` y `549264000000` (los que cargaba el prototipo) se tratan como "sin teléfono" y la app pide completarlo.

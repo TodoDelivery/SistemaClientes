@@ -159,7 +159,7 @@ for (const archivo of archivos) {
 const CONTRATO = [
   "`pedidos-cadete-${", "`pedido-en-curso-${", "'cadetes-disponibles'", "coords_ts",
   "'nuevo_pedido'", "'pedido_retirado'", "'pedido_rechazado'", "'cambio_estado_pedido'",
-  "'ubicacion_cadete'", "'cadete_conectado'", "'mensaje_chat'",
+  "'ubicacion_cadete'", "'cadete_conectado'", "'mensaje_chat'", "'Chat_pedido'", "id_mensaje",
   "'pendiente'", "'libre'", "'en_confirmacion'", "'asignado'", "'en_camino_entrega'", "'entregado'", "'rendido'", "'cancelado'",
   "id_cadete_rechazo", "remitente: 'cliente'",
   "TIMEOUT_OFERTA_MS: 20000"

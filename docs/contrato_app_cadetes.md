@@ -62,6 +62,7 @@ Estructura de navegación del prototipo: 3 pestañas → "Solicitar Envío", "Se
 | latitud_org / longitud_org   | float8 | punto A (retiro)                                 |
 | latitud_dest / longitud_dest | float8 | punto B (entrega)                                |
 | tiempo_pedido   | int8        | minutos del viaje, lo escribe el cadete al entregar          |
+| Chat_pedido     | text NULL   | chat del pedido: array JSON de mensajes (sección 9). Lo escriben cliente y cadete |
 
 **Cadetes** (el cliente solo LEE, nunca usar `select('*')`)
 - Para asignar: `id_cad, nombre_cad, alias_cad, estado_cad`.
@@ -436,7 +437,7 @@ conectado a ese mismo topic, reutilizarlo. Si era otro, `removeChannel` del ante
 | broadcast `pedido_rechazado`                               | `{ id_pedido, id_cadete_rechazo }`                                      | ver 7.6         |
 | broadcast `cadete_conectado`                               | `{ id_pedido, id_cadete, patente, vehiculo, timestamp }`                | mostrar patente y "Vehículo: …" |
 | broadcast `ubicacion_cadete`                               | `{ id_pedido, id_cadete, patente, vehiculo, coords: { lat, lng, accuracy, heading, speed, timestamp } }` | coordenadas (5 decimales), velocidad `speed * 3.6` km/h (si es 0: "En movimiento"), "GPS en Vivo • {vehiculo}", patente |
-| broadcast `mensaje_chat`                                   | ver sección 9                                                           | burbuja si `remitente === 'cadete'` |
+| broadcast `mensaje_chat`                                   | ver sección 9                                                           | se suma al historial del chat (sección 9) |
 
 Datos del cadete asignado: `SELECT id_cad, nombre_cad, alias_cad, telef_cad, vehiculo_cad, patente FROM Cadetes
 WHERE id_cad = ?`. Nombre = `nombre_cad || alias_cad || 'Cadete #id'`, iniciales para el avatar.
@@ -458,15 +459,31 @@ Cuando no hay pedido activo, se muestra el estado vacío con un botón a "Solici
 
 ## 9. Chat con el cadete
 
-- Va por broadcast en el canal `pedido-en-curso-{id_pedido}`, evento `mensaje_chat`. **No se persiste**
-  (se pierde al recargar).
+- Cada mensaje va **primero en vivo** por broadcast en el canal `pedido-en-curso-{id_pedido}`, evento
+  `mensaje_chat`, y **después se guarda** en `Pedidos.Chat_pedido`. Si el otro lado no está conectado, lo lee
+  de la BD al volver a abrir el pedido. Al abrir el pedido, el chat arranca con lo que hay guardado.
 - Payload que envía el cliente:
   ```js
-  { id_pedido, id_emisor: id_cliente, id_receptor: id_cadete, remitente: 'cliente',
+  { id_mensaje, id_pedido, id_emisor: id_cliente, id_receptor: id_cadete, remitente: 'cliente',
     texto, hora: 'HH:MM', timestamp: ISO }
   ```
-  El cadete envía lo mismo con `remitente: 'cadete'` y además `id_mensaje`.
-- Pintar el propio mensaje al enviarlo (a la derecha) y los del cadete al recibirlos (a la izquierda), con la hora.
+  El cadete envía lo mismo con `remitente: 'cadete'`. `id_mensaje` es único (`msg_{ms}_{azar}`) y es lo que
+  permite descartar repetidos: el mismo mensaje puede llegar por broadcast y por la BD.
+- **`Pedidos.Chat_pedido`** (text): `JSON.stringify` de un array de esos mensajes sin `id_pedido`, ordenado por
+  `timestamp`. `null` = sin mensajes. Máximo 500 caracteres por mensaje.
+- **Escritura sin bloqueo:** cliente y cadete escriben la misma columna, y una escritura puede pisar a la otra.
+  Por eso nadie agrega "su" mensaje a ciegas. Cada lado (`chat_pedido.js`, copiado en los dos repos):
+  1. relee `Chat_pedido`, lo une por `id_mensaje` con todo lo que conoce (lo propio y lo recibido en vivo) y, solo
+     si a la BD le falta algo, guarda la unión. El UPDATE lleva además `id_cliente` / `id_cadete` propio;
+  2. escucha el `postgres_changes` del pedido: si trae mensajes que no tenía, los muestra (así llegan los que no
+     entraron por broadcast); si a lo guardado le falta alguno que conoce, vuelve al paso 1;
+  3. si recibe un mensaje en vivo, a los 4 s verifica que el emisor lo haya guardado y, si no, lo guarda;
+  4. repite el paso 1 al (re)conectar el canal, al recuperar la conexión y cada 5 s (hasta 6 veces) si falló.
+- El mensaje propio se marca "No enviado" solo si no salió ni por broadcast ni a la BD; se sigue reintentando.
+- No leídos: mensajes del otro lado con `timestamp` posterior al último visto, que se recuerda en `localStorage`
+  por pedido. Así, al reabrir el pedido se ve si hay mensajes sin leer.
+- Los mensajes se muestran ordenados por `timestamp`: los propios a la derecha y los del otro a la izquierda, con la hora.
+- El panel de admin (Monitor de Envíos → detalle del pedido) muestra `Chat_pedido` en solo lectura.
 - **Renderizar el texto como texto plano** (`textContent` o el escape del framework). El prototipo lo inserta
   con `innerHTML`, lo que permite inyectar HTML desde el otro lado: no copiar eso.
 
@@ -531,4 +548,5 @@ Con 3 a 5 sesiones de cadete (`Templates/dashboard.html?id_cad=N`) en turno:
 - Login 1-Click de demo y toggle de "simular nocturno": solo pruebas, no portear.
 - Mover el motor de asignación (sección 7) a una Edge Function: previsto para cuando se haga la UI de cadetes.
 - El total se calcula en el cliente. Cuando exista backend (Edge Function), recalcularlo del lado del servidor.
-- Persistencia del chat: hoy no existe.
+- Chat: la escritura de `Chat_pedido` es "leer, unir y guardar" desde el navegador. Con backend, pasarla a una
+  función que agregue el mensaje de forma atómica.

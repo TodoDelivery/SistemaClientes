@@ -168,7 +168,7 @@
 
         <div id="clienteChatMessages" class="h-72 overflow-y-auto p-4 space-y-3" role="log" aria-live="polite">
           <p id="chatPlaceholder" class="text-center text-sm text-brand-textMuted py-8">
-            Escribile si necesitás darle una indicación. Los mensajes no se guardan al salir.
+            Escribile si necesitás darle una indicación. Los mensajes quedan guardados en el pedido.
           </p>
         </div>
 
@@ -203,6 +203,7 @@
     } from '../scripts/script_asignacion.js';
     import { requerirCliente, buscarPedidoEnCurso, registrarLimpiezaAntesDeSalir } from '../scripts/sesion_cliente.js';
     import { rutaPorCalles } from '../scripts/direcciones.js';
+    import { crearHistorialChat } from '../scripts/chat_pedido.js';
     import {
       montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar,
       formatearPesos, formatearFechaPedido, emojiPaquete, textoPaquete, iniciales
@@ -230,8 +231,12 @@
 
     let ultimaSenalGps = 0;
     let relojGps = null;
+    let chat = null;              // historial del chat (en vivo + Pedidos.Chat_pedido)
+    const burbujas = new Map();   // id_mensaje -> { fila, etiquetaHora, hora }
+    const sinEnviar = new Set();  // mensajes propios que no salieron ni en vivo ni a la BD
     let chatVisible = false;
     let noLeidos = 0;
+    let chatVistoHasta = '';      // timestamp del último mensaje del cadete que el cliente ya vio
 
     const $ = (id) => document.getElementById(id);
 
@@ -313,10 +318,7 @@
       // Mensajes no leídos: se cuentan mientras el chat no está a la vista
       new IntersectionObserver(([entrada]) => {
         chatVisible = entrada.isIntersecting;
-        if (chatVisible) {
-          noLeidos = 0;
-          renderNoLeidos();
-        }
+        if (chatVisible && chat) actualizarNoLeidos(chat.lista());
       }, { threshold: 0.3 }).observe($('clienteChatMessages'));
     }
 
@@ -361,6 +363,7 @@
       $('emojiPaquete').textContent = emojiPaquete(pedido.tipo_paquete);
 
       inicializarMapaSeguimiento(pedido);
+      iniciarChat(pedido);
       conectarCanalPrivadoPedido(pedido.id_pedido);
       renderPedido();
 
@@ -737,16 +740,9 @@
           if (payload?.patente) actualizarInsigniaPatente(payload.patente);
           if (payload?.vehiculo) $('cadeteVehiculo').textContent = payload.vehiculo;
         })
-        // C) Mensajes de chat
+        // C) Mensajes de chat en vivo (el historial los pinta y avisa si son nuevos)
         .on('broadcast', { event: 'mensaje_chat' }, ({ payload }) => {
-          if (payload?.remitente !== 'cadete') return;
-          appendChatBubble(payload.texto, false, payload.hora);
-          if (!chatVisible) {
-            noLeidos++;
-            renderNoLeidos();
-            const texto = String(payload.texto ?? '');
-            mostrarToast(`${nombreCadete}: ${texto.length > 80 ? `${texto.slice(0, 80)}…` : texto}`, { icono: '💬', alTocar: irAlChat });
-          }
+          chat?.registrar(payload);
         })
         // D) Cambios de estado avisados por el cadete (ej: aceptó)
         .on('broadcast', { event: 'cambio_estado_pedido' }, ({ payload }) => {
@@ -776,11 +772,17 @@
           (payload) => {
             if (!payload.new) return;
             aplicarCambioPedido(payload.new);
+            // Mensajes guardados por el cadete que no llegaron en vivo
+            chat?.fusionar(payload.new.Chat_pedido);
             // Cualquier cambio (rechazo, aceptación, cancelación) se evalúa en el motor releyendo la BD
             solicitarRevisionDePedido(idPedido);
           }
         )
-        .subscribe((status) => renderEstadoCanal(status));
+        .subscribe((status) => {
+          renderEstadoCanal(status);
+          // Al conectar o reconectar: traer lo que se guardó mientras no había canal
+          if (status === 'SUBSCRIBED') chat?.sincronizar();
+        });
     }
 
     function renderEstadoCanal(status) {
@@ -803,38 +805,77 @@
     // -------------------------------------------------------------------------
     // CHAT
     // -------------------------------------------------------------------------
-    async function enviarMensajeChat(texto) {
-      if (!texto || !channelPedidoPrivado || !pedidoActivo || !tieneCadeteAsignado()) return;
-
-      const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); // 'HH:MM'
-      const etiquetaHora = appendChatBubble(texto, true, hora);
-
+    function iniciarChat(pedido) {
       try {
-        const resultado = await channelPedidoPrivado.send({
-          type: 'broadcast',
-          event: 'mensaje_chat',
-          payload: {
-            id_pedido: pedidoActivo.id_pedido,
-            id_emisor: clienteActual.id_cliente,
-            id_receptor: pedidoActivo.id_cadete,
-            remitente: 'cliente',
-            texto,
-            hora,
-            timestamp: new Date().toISOString()
-          }
-        });
-        if (resultado !== 'ok') throw new Error(`envío ${resultado}`);
+        chatVistoHasta = localStorage.getItem(`td_chat_visto_${pedido.id_pedido}`) || '';
+      } catch { /* sin almacenamiento: se cuentan como no leídos */ }
+
+      chat = crearHistorialChat({
+        idPedido: pedido.id_pedido,
+        remitente: 'cliente',
+        idEmisor: clienteActual.id_cliente,
+        filtro: { id_cliente: clienteActual.id_cliente },
+        inicial: pedido.Chat_pedido,
+        alCambiar: pintarChat,
+        alRecibir: avisarMensajesNuevos
+      });
+      pintarChat(chat.lista());
+    }
+
+    async function enviarMensajeChat(texto) {
+      if (!texto || !chat || !channelPedidoPrivado || !pedidoActivo || !tieneCadeteAsignado()) return;
+
+      const mensaje = chat.crearMensaje(texto, pedidoActivo.id_cadete); // queda pintado por alCambiar
+
+      // Primero en vivo y después a la BD: si el cadete no está conectado, lo lee al abrir el pedido
+      let enVivo = false;
+      try {
+        enVivo = (await channelPedidoPrivado.send({ type: 'broadcast', event: 'mensaje_chat', payload: mensaje })) === 'ok';
       } catch (err) {
-        console.warn('[Chat] No se pudo enviar el mensaje:', err);
-        etiquetaHora.textContent = `${hora} · No enviado`;
-        etiquetaHora.classList.add('text-brand-danger');
+        console.warn('[Chat] No se pudo enviar el mensaje en vivo:', err);
+      }
+      const guardado = await chat.sincronizar();
+
+      // El historial sigue reintentando: cuando se guarda, pintarChat saca el aviso
+      if (!enVivo && !guardado && !chat.estaGuardado(mensaje.id_mensaje)) {
+        sinEnviar.add(mensaje.id_mensaje);
+        pintarChat(chat.lista());
       }
     }
 
-    // El texto se inserta como texto plano: nunca como HTML
-    function appendChatBubble(texto, esMio, hora) {
+    // Pinta los mensajes que faltan en pantalla, cada uno en su lugar según la hora en que se envió
+    function pintarChat(lista) {
       const container = $('clienteChatMessages');
-      $('chatPlaceholder')?.remove();
+      let agregados = 0;
+
+      lista.forEach((mensaje, i) => {
+        if (burbujas.has(mensaje.id_mensaje)) return;
+        const burbuja = crearBurbujaChat(mensaje);
+        const siguiente = lista.slice(i + 1).map(m => burbujas.get(m.id_mensaje)?.fila).find(Boolean);
+        container.insertBefore(burbuja.fila, siguiente || null);
+        burbujas.set(mensaje.id_mensaje, burbuja);
+        agregados++;
+      });
+
+      for (const id of sinEnviar) {
+        const burbuja = burbujas.get(id);
+        const guardado = chat?.estaGuardado(id);
+        if (guardado) sinEnviar.delete(id);
+        if (!burbuja) continue;
+        burbuja.etiquetaHora.textContent = guardado ? burbuja.hora : `${burbuja.hora} · No enviado`;
+        burbuja.etiquetaHora.classList.toggle('text-brand-danger', !guardado);
+      }
+
+      if (agregados) {
+        $('chatPlaceholder')?.remove();
+        container.scrollTop = container.scrollHeight;
+      }
+      actualizarNoLeidos(lista);
+    }
+
+    // El texto se inserta como texto plano: nunca como HTML
+    function crearBurbujaChat({ texto, hora, remitente }) {
+      const esMio = remitente === 'cliente';
 
       const fila = document.createElement('div');
       fila.className = esMio ? 'flex flex-col items-end' : 'flex flex-col items-start';
@@ -851,9 +892,28 @@
       etiquetaHora.textContent = hora || '';
 
       fila.append(burbuja, etiquetaHora);
-      container.appendChild(fila);
-      container.scrollTop = container.scrollHeight;
-      return etiquetaHora;
+      return { fila, etiquetaHora, hora: hora || '' };
+    }
+
+    // No leídos = mensajes del cadete posteriores al último que el cliente vio (se recuerda entre visitas)
+    function actualizarNoLeidos(lista) {
+      const delCadete = lista.filter(m => m.remitente === 'cadete');
+      const ultimo = delCadete.at(-1)?.timestamp || '';
+
+      if (chatVisible && ultimo > chatVistoHasta) {
+        chatVistoHasta = ultimo;
+        try {
+          localStorage.setItem(`td_chat_visto_${pedidoActivo.id_pedido}`, ultimo);
+        } catch { /* sin almacenamiento: se vuelven a contar al reabrir */ }
+      }
+      noLeidos = delCadete.filter(m => m.timestamp > chatVistoHasta).length;
+      renderNoLeidos();
+    }
+
+    function avisarMensajesNuevos(nuevos) {
+      if (chatVisible) return;
+      const texto = nuevos.at(-1).texto;
+      mostrarToast(`${nombreCadete}: ${texto.length > 80 ? `${texto.slice(0, 80)}…` : texto}`, { icono: '💬', alTocar: irAlChat });
     }
 
     function irAlChat() {
@@ -876,6 +936,7 @@
       detenerRelojGps();
       const b = obtenerBusquedaActiva();
       if (b) detenerBusqueda(b, 'se cerró el seguimiento');
+      chat?.cerrar();
       if (channelPedidoPrivado) {
         supabase.removeChannel(channelPedidoPrivado);
         channelPedidoPrivado = null;
