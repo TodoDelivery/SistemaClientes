@@ -24,11 +24,13 @@
   <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
-<body class="font-sans antialiased selection:bg-brand-accent/20 selection:text-brand-dark">
+<body class="font-sans antialiased selection:bg-brand-accent/20 selection:text-brand-dark" data-pestana="home" data-titulo="Inicio">
 
   <header id="appBar"></header>
+  <nav id="barraInferior"></nav>
+  <script src="../scripts/layout_previo.js"></script>
 
-  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-5" role="status" aria-live="polite">
+  <div id="cargandoPagina" class="fixed inset-0 z-[1000] flex flex-col items-center justify-center gap-5" role="status" aria-live="polite">
     <div class="logo-cargando" aria-hidden="true">
       <img class="logo-cargando-base" src="../images/Logo_svg.svg" alt="" />
       <img class="logo-cargando-relleno" src="../images/Logo_svg.svg" alt="" />
@@ -101,8 +103,6 @@
   <!-- Globo de datos al pasar el dedo o el mouse por una barra -->
   <div id="globoDatos" role="tooltip"
     class="hidden fixed z-[1200] pointer-events-none px-3 py-2 rounded-xl bg-brand-dark text-white text-xs font-bold shadow-lg max-w-[220px] whitespace-pre-line text-center"></div>
-
-  <nav id="barraInferior"></nav>
 
   <script type="module">
     import { supabase } from '../scripts/conexion_supabase.js';

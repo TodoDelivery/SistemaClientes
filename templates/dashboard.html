@@ -24,11 +24,13 @@
   <link rel="stylesheet" href="../styles/estilos_cliente.css" />
 </head>
 
-<body class="font-sans antialiased selection:bg-brand-accent/20 selection:text-brand-dark">
+<body class="font-sans antialiased selection:bg-brand-accent/20 selection:text-brand-dark" data-pestana="historial" data-titulo="Mis pedidos">
 
   <header id="appBar"></header>
+  <nav id="barraInferior"></nav>
+  <script src="../scripts/layout_previo.js"></script>
 
-  <div id="cargandoPagina" class="min-h-[70dvh] flex flex-col items-center justify-center gap-5" role="status" aria-live="polite">
+  <div id="cargandoPagina" class="fixed inset-0 z-[1000] flex flex-col items-center justify-center gap-5" role="status" aria-live="polite">
     <div class="logo-cargando" aria-hidden="true">
       <img class="logo-cargando-base" src="../images/Logo_svg.svg" alt="" />
       <img class="logo-cargando-relleno" src="../images/Logo_svg.svg" alt="" />
@@ -78,8 +80,6 @@
       <div id="historialList" class="bg-brand-surface border border-brand-border rounded-3xl overflow-hidden divide-y divide-brand-border shadow-card" aria-busy="true"></div>
     </section>
   </main>
-
-  <nav id="barraInferior"></nav>
 
   <script type="module">
     import { supabase } from '../scripts/conexion_supabase.js';

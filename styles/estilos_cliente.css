@@ -213,6 +213,25 @@ body {
 }
 
 
+/* ---- Pantalla de carga: cubre la página pero va POR DEBAJO de la barra superior e inferior (z-[1100]) ---- */
+#cargandoPagina {
+  background: var(--bg-page);
+  transition: opacity 0.3s ease;
+}
+
+#cargandoPagina.saliendo {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Al navegar entre páginas (navegadores con View Transitions) las barras quedan quietas y el resto se funde */
+@view-transition {
+  navigation: auto;
+}
+
+#appBar { view-transition-name: barra-superior; }
+#barraInferior { view-transition-name: barra-inferior; }
+
 /* ---- Pantalla de carga: el logo se va llenando de color ---- */
 .logo-cargando {
   position: relative;

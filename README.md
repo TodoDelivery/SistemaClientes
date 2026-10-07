@@ -217,7 +217,7 @@ No hay CI: la verificación se corre a mano antes de cada commit.
 - **`script_asignacion.js` no toca el DOM.** La página se entera por `suscribirMotorAsignacion()`. Así el motor se puede mover a una Edge Function sin reescribir la UI.
 - **Clases de Tailwind escritas completas** (`'bg-brand-accent'`, no `'bg-' + color`). El CDN genera las clases que encuentra en el DOM.
 - **Un `<fieldset>` con contenido que scrollea lleva `min-w-0`**. Si no, ensancha la página más que la pantalla del celular.
-- Páginas nuevas: copiar la estructura de `dashboard.html` (`#appBar`, `#cargandoPagina`, `#contenidoPagina`, `#barraInferior`), llamar a `requerirCliente()` y `montarLayoutCliente()`, y si va en la barra inferior, sumarla a `PESTANAS` en `ui_cliente.js`.
+- Páginas nuevas: copiar la estructura de `dashboard.html` (`#appBar`, `#barraInferior`, `layout_previo.js`, `#cargandoPagina`, `#contenidoPagina`, y `data-pestana`/`data-titulo` en el `<body>`), llamar a `requerirCliente()` y `montarLayoutCliente()`, y si va en la barra inferior, sumarla a `PESTANAS` en `layout_previo.js`.
 
 ### Pruebas manuales antes de publicar un cambio grande
 
