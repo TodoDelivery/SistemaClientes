@@ -268,7 +268,17 @@
 
         await cargaCotiz;
         recalcularCotizacionUI();
-        setInterval(recalcularCotizacionUI, 60000); // entrar o salir de la franja nocturna con la página abierta
+        // Con la página abierta: entrar o salir de la franja nocturna, y tarifas que el admin cambia en Ajustes
+        // (por Realtime; de respaldo se releen cada minuto y al volver a la pestaña)
+        const refrescarTarifas = async () => { await cargarDatosCotizacion(); recalcularCotizacionUI(); };
+        setInterval(refrescarTarifas, 60000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') refrescarTarifas();
+        });
+        supabase
+          .channel('tarifas-datos-cotiz')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'Datos_cotiz' }, refrescarTarifas)
+          .subscribe();
 
         mostrarPedidoEnCurso();
       } catch (err) {
@@ -739,6 +749,7 @@
         const { data, error } = await supabase
           .from('Datos_cotiz')
           .select('bajada_band, tarifa_km, porc_tarif_dinamica')
+          .order('id', { ascending: true })
           .limit(1)
           .maybeSingle();
 

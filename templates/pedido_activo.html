@@ -459,7 +459,17 @@
       $('btnCancelarPedido').classList.toggle('hidden', !enBusqueda);
       $('accionesFinales').classList.toggle('hidden', !finalizado);
       $('tarjetaCadete').classList.toggle('hidden', !conCadete);
-      $('tarjetaChat').classList.toggle('hidden', !(ESTADOS_CHAT.includes(estado) && idCadete));
+      // En un pedido ya realizado el chat queda a la vista pero solo para leer (antes se ocultaba entero)
+      const chatAbierto = ESTADOS_CHAT.includes(estado) && Boolean(idCadete);
+      const chatSoloLectura = conCadete && finalizado;
+      $('tarjetaChat').classList.toggle('hidden', !(chatAbierto || chatSoloLectura));
+      $('formChat').classList.toggle('hidden', !chatAbierto);
+      $('respuestasRapidas').classList.toggle('hidden', !chatAbierto);
+      $('chipCanal').classList.toggle('hidden', !chatAbierto);
+      $('tituloChat').textContent = chatSoloLectura ? 'Chat del pedido' : 'Chat con tu cadete';
+      if (chatSoloLectura && $('chatPlaceholder')) {
+        $('chatPlaceholder').textContent = 'No hubo mensajes en este pedido.';
+      }
       marcarSeguimientoActivo(!finalizado);
 
       if (conCadete && idCadeteCargado !== Number(idCadete)) {
