@@ -63,13 +63,17 @@ Estructura de navegación del prototipo: 3 pestañas → "Solicitar Envío", "Se
 | latitud_dest / longitud_dest | float8 | punto B (entrega)                                |
 | tiempo_pedido   | int8        | minutos del viaje, lo escribe el cadete al entregar          |
 | Chat_pedido     | text NULL   | chat del pedido: array JSON de mensajes (sección 9). Lo escriben cliente y cadete |
+| porc_comision   | float8 NULL | % que el cadete rinde de este pedido. Lo fija un trigger de la BD al pasar a `asignado` (copia `Datos_cotiz.Porc_Comision`) y lo borra si `id_cadete` vuelve a null. Ninguna app lo escribe |
+| id_rendicion    | int8 NULL   | rendición de caja que incluyó el pedido (tabla `Rendiciones`). Lo escribe la función `rendir_caja` |
 
 **Cadetes** (el cliente solo LEE, nunca usar `select('*')`)
 - Para asignar: `id_cad, nombre_cad, alias_cad, estado_cad`.
 - Para mostrar el cadete asignado: `id_cad, nombre_cad, alias_cad, telef_cad, vehiculo_cad, patente`.
 
 **Datos_cotiz**: `bajada_band`, `tarifa_km`, `porc_tarif_dinamica` (se usa la primera fila).
-Además tiene `Porc_Comision` (float8, 40 por defecto): % de cada pedido que el cadete rinde a la empresa; su ganancia es el resto. Lo edita el admin en Dashboard-Admin → Ajustes y lo leen la app de cadetes y la Caja del dashboard. La app de clientes no lo usa.
+Además tiene `Porc_Comision` (float8, 40 por defecto): % vigente que el cadete rinde a la empresa; su ganancia es el resto. Se congela en `Pedidos.porc_comision` al aceptar, así que cambiarlo solo afecta a pedidos aceptados después. Y `whatsapp_central` (text NULL): número de la central para el resumen del cashout del cadete. Los dos los edita el admin en Dashboard-Admin → Ajustes; la app de clientes no los usa. `Datos_cotiz` está en la publicación de Realtime.
+
+**Rendiciones** y **Cierres_jornada**: las escribe solo Dashboard-Admin (Caja), con las funciones `rendir_caja(p_id_cadete, p_ids_pedidos, p_metodo_pago, p_notas)` y `anular_rendicion(p_id_rendicion)` para rendir o reabrir. La app de clientes no las usa.
 
 ### Estados de `Pedidos.estado_pedido`
 
@@ -81,7 +85,7 @@ Además tiene `Porc_Comision` (float8, 40 por defecto): % de cada pedido que el 
 | `asignado`         | X         | X aceptó; va a retirar el pedido                       | Cadete                |
 | `en_camino_entrega`| X         | X retiró el paquete y va al destino                    | Cadete                |
 | `entregado`        | X         | Entregado (con `tiempo_pedido`)                        | Cadete                |
-| `rendido`          | X         | El cadete rindió el efectivo del turno                 | Cadete (cashout)      |
+| `rendido`          | X         | La administradora cobró el efectivo (con `id_rendicion`) | Admin (`rendir_caja`) |
 | `cancelado`        | null o X  | Sin cadetes / todos rechazaron / cancelado por cliente | Cliente               |
 
 Los tres primeros son la **fase de búsqueda**: `ESTADOS_BUSQUEDA = ['pendiente', 'libre', 'en_confirmacion']`.
