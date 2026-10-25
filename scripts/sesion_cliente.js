@@ -5,6 +5,7 @@
 // login_google.html es la única página que crea la fila en 'Clientes' (pide el teléfono).
 import { supabase } from './conexion_supabase.js';
 import { ESTADOS_BUSQUEDA, esBusquedaVencida, vencerBusquedasAbandonadas } from './script_asignacion.js';
+import { desactivarAvisos } from './avisos_push.js';
 
 export const PAGINAS = {
   get login() {
@@ -169,6 +170,7 @@ export async function cerrarSesion() {
   if (saliendo) return;
   saliendo = true;
   await ejecutarLimpieza();
+  await desactivarAvisos(); // este celular deja de recibir los avisos de esta cuenta
   try {
     await supabase.auth.signOut();
   } catch (err) {

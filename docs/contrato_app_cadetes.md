@@ -547,7 +547,23 @@ Con 3 a 5 sesiones de cadete (`Templates/dashboard.html?id_cad=N`) en turno:
 
 ---
 
-## 13. Fuera de alcance / pendiente
+## 13. Notificaciones push
+
+- Web Push en Chrome para Android, sin instalar la app. iPhone sin avisos por ahora.
+- `Push_suscripciones` (`endpoint` PK, `claves` jsonb, `id_cad` o `id_cliente`): un celular por fila. Tiene RLS y
+  ningún permiso para `anon`/`authenticated`: las apps la tocan solo a través de la Edge Function `suscribir-push`
+  (`{ accion: 'clave' | 'alta' | 'baja', suscripcion, id_cad? }`). El cliente queda identificado por su token de sesión.
+- El trigger `push_pedidos` (AFTER UPDATE de `Pedidos` si cambia `estado_pedido`, `id_cadete` o `Chat_pedido`) llama
+  con `pg_net` a la Edge Function `enviar-push`, que decide el aviso y lo manda. Claves VAPID y secreto del trigger en
+  Vault (`push_config()`, solo `service_role`).
+- Avisos: al cadete, oferta (`libre`), cancelación del cliente y mensaje del cliente; al cliente, `asignado`,
+  `en_camino_entrega`, `entregado`, cancelación durante la búsqueda y mensaje del cadete. Al tocarlos abren
+  `Templates/dashboard.html?id_cad=X`, `Templates/pedido_activo.html?id_cad=X&chat=1` o
+  `templates/pedido_activo.html?id_pedido=N[&chat=1]`.
+- El service worker (`sw.js` de cada app, parte push copiada en las dos) no muestra el aviso si esa pantalla está visible.
+- Si se agrega un estado (ej: la cola `en_cola`), sumar su aviso en `enviar-push`.
+
+## 14. Fuera de alcance / pendiente
 
 - Login 1-Click de demo y toggle de "simular nocturno": solo pruebas, no portear.
 - Mover el motor de asignación (sección 7) a una Edge Function: previsto para cuando se haga la UI de cadetes.

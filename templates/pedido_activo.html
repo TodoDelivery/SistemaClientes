@@ -204,6 +204,7 @@
     import { requerirCliente, buscarPedidoEnCurso, registrarLimpiezaAntesDeSalir } from '../scripts/sesion_cliente.js';
     import { rutaPorCalles } from '../scripts/direcciones.js';
     import { crearHistorialChat } from '../scripts/chat_pedido.js';
+    import { permisoAvisos, dijoAhoraNo, recordarAhoraNo, activarAvisos, sincronizarAvisos } from '../scripts/avisos_push.js';
     import {
       montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar,
       formatearPesos, formatearFechaPedido, emojiPaquete, textoPaquete, iniciales
@@ -288,6 +289,11 @@
           history.replaceState(null, '', `?id_pedido=${encodeURIComponent(pedido.id_pedido)}`);
         }
         abrirSeguimiento(pedido);
+        // Llegó tocando el aviso de un mensaje: ir directo al chat
+        if (new URLSearchParams(window.location.search).get('chat') === '1') {
+          setTimeout(() => { if (!$('tarjetaChat').classList.contains('hidden')) irAlChat(); }, 600);
+        }
+        ofrecerAvisos();
       } catch (err) {
         console.error('Error al iniciar el seguimiento:', err);
         mostrarErrorPagina(err.message || 'Error de conexión con el servidor.');
@@ -936,6 +942,45 @@
       badge.textContent = noLeidos > 9 ? '9+' : String(noLeidos);
       badge.classList.toggle('hidden', noLeidos === 0);
       badge.classList.toggle('inline-flex', noLeidos > 0);
+    }
+
+    // -------------------------------------------------------------------------
+    // AVISOS PUSH
+    // -------------------------------------------------------------------------
+    // Con un pedido en curso se ofrece avisarle cómo va aunque cierre la app. Si dice "Ahora no", no se
+    // vuelve a preguntar por unos días; si ya los activó, solo se vuelve a registrar el celular.
+    async function ofrecerAvisos() {
+      const permiso = permisoAvisos();
+      if (permiso === 'granted') {
+        sincronizarAvisos();
+        return;
+      }
+      if (permiso !== 'default' || dijoAhoraNo() || ESTADOS_FINALES.includes(pedidoActivo?.estado_pedido)) return;
+
+      await new Promise(resolver => setTimeout(resolver, 1500));
+      if (paginaCerrada) return;
+
+      const quiere = await confirmar({
+        titulo: '¿Te avisamos cómo va tu pedido?',
+        mensaje: 'Te mandamos una notificación cuando un cadete lo tome, cuando vaya en camino y si te escribe, aunque cierres la app.',
+        textoConfirmar: 'Sí, avisame',
+        textoCancelar: 'Ahora no'
+      });
+      if (!quiere) {
+        recordarAhoraNo();
+        return;
+      }
+      try {
+        const activos = await activarAvisos();
+        if (activos) {
+          mostrarToast('Listo: te vamos a avisar cómo va tu pedido', { tipo: 'exito', icono: '🔔' });
+        } else {
+          mostrarToast('Los avisos quedaron desactivados. Podés activarlos desde los ajustes de Chrome.', { tipo: 'aviso' });
+        }
+      } catch (err) {
+        console.error('[Avisos] No se pudieron activar:', err);
+        mostrarToast('No pudimos activar los avisos. Probá más tarde.', { tipo: 'error' });
+      }
     }
 
     // -------------------------------------------------------------------------
