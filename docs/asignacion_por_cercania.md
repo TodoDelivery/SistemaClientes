@@ -1,31 +1,20 @@
 # Asignación de pedidos por cercanía
 
-> **Actualización del 15/11/2026: la asignación pasó al servidor.** La regla de cercanía de este documento
-> es la misma, pero ya no la ejecuta `scripts/script_asignacion.js` en el navegador del cliente (ese archivo
-> se eliminó): la ejecutan las funciones de Postgres de
-> `supabase/migrations/20261115100000_asignador_en_servidor.sql`. Cambios a tener en cuenta al leer lo que sigue:
-> - La ubicación y la conexión de cada cadete salen de su latido (`cadete_latido`, tabla `cadetes_senal`), no de
->   Realtime Presence. El cliente ya no escucha `cadetes-disponibles`.
-> - Los rechazos se guardan en `ofertas_pedido`: no se pierden al recargar.
-> - Las secciones "Cómo verificarlo", "Pruebas de estrés realizadas" y "Limitaciones conocidas" describen el motor anterior.
-> - La descripción vigente y completa está en la sección 7 del contrato.
-
-Cómo el motor de asignación elige a qué cadete ofrecerle un pedido nuevo.
-La especificación completa del motor, los estados y los canales está en
-[`contrato_app_cadetes.md`](contrato_app_cadetes.md) (sección 7); acá se explica la regla de cercanía y lo
-que hay que saber para mantenerla.
+Cómo el asignador elige a qué cadete ofrecerle un pedido nuevo. Desde el 15/11/2026 el asignador corre **en el
+servidor** (funciones de Postgres + pg_cron, `supabase/migrations/20261115100000_asignador_en_servidor.sql`), no
+en el navegador del cliente. La especificación completa (estados, funciones, canales) está en
+[`contrato_app_cadetes.md`](contrato_app_cadetes.md), sección 7; acá se explica la regla de cercanía y lo que
+hay que saber para mantenerla.
 
 ---
 
 ## La regla en tres líneas
 
 1. El pedido se ofrece **a un solo cadete por vez**, primero al **cadete libre más cercano al punto de retiro**.
-2. Si **3 cadetes seguidos** no lo toman (rechazan o no responden), se sigue ofreciendo **sin tener en cuenta
-   la distancia**, en orden de `id_cad`, como hacía el motor antes.
-3. Quién está libre lo decide siempre la **BD** (`Cadetes.estado_cad = 'disponible'`), pero solo cuenta si
-   ese cadete **sigue conectado** según Presence: si cerró la app sin "Finalizar Turno", su fila queda vieja
-   en la BD (por ejemplo en `'ocupado'`) y se descarta en vez de tratarla como un cadete real. Por eso el
-   canal de Presence se mantiene abierto **toda la búsqueda**, no solo mientras se mide distancia.
+2. Después de **3 ofertas sin aceptar** (rechazo o sin respuesta) se sigue ofreciendo **sin tener en cuenta la
+   distancia**, en orden de `id_cad`.
+3. Solo cuentan los cadetes **en turno**: los que mandaron su señal en los últimos 75 segundos y no están
+   `desconectado`. Un cadete que cerró la app sin "Finalizar Turno" deja de mandar señal y se descarta solo.
 
 ---
 
@@ -33,107 +22,104 @@ que hay que saber para mantenerla.
 
 ```mermaid
 flowchart TD
-    A[Pedido creado: pendiente] --> B[pedido_activo.html arranca el motor]
-    B --> C[Escucha Presence 'cadetes-disponibles'<br/>espera el primer estado hasta 5 s]
-    C --> D[Lee Cadetes con estado_cad = 'disponible'<br/>y descarta a los que ya lo vieron]
-    D --> E{¿Modo cercanía?}
-    E -- sí --> F[Elige el de menor distancia Haversine<br/>al punto de retiro]
-    E -- no --> G[Elige el de menor id_cad]
-    F --> H[Oferta: UPDATE condicional a 'libre'<br/>+ broadcast 'nuevo_pedido']
+    A[Pedido creado: pendiente] --> B[Trigger asignador_al_crear_pedido]
+    B --> C[Cadetes en turno que todavía<br/>no recibieron este pedido]
+    C --> D{¿Hay alguno libre?}
+    D -- sí --> E{¿Menos de 3 ofertas<br/>y el pedido tiene retiro?}
+    E -- sí --> F[El de menor distancia Haversine<br/>al punto de retiro]
+    E -- no --> G[El de menor id_cad]
+    F --> H[Oferta: estado 'libre', vence en 20 s<br/>+ broadcast 'nuevo_pedido']
     G --> H
     H --> I{¿Qué hace el cadete?}
     I -- acepta --> J[asignado: fin de la búsqueda]
-    I -- rechaza o no responde en 20 s --> K[Se anota el rechazo]
-    K --> L{¿3 rechazos en modo cercanía?}
-    L -- sí --> M[Pasa a modo 'sin_distancia'] --> D
-    L -- no --> D
+    I -- rechaza --> C
+    I -- no responde en 20 s --> K[pg_cron vence la oferta<br/>+ broadcast 'pedido_retirado'] --> C
+    D -- no, pero hay ocupados --> L[Espera hasta 60 s<br/>se reintenta cada 3 s] --> C
+    D -- no queda nadie --> M[cancelado con motivo]
 ```
 
-1. **El pedido nace `pendiente`**, sin cadete (`crear_pedido.html`). La página de seguimiento
-   (`pedido_activo.html`) llama a `iniciarBusquedaCadete(id_pedido)`.
-2. **El motor se suscribe a Presence del canal `cadetes-disponibles`** solo para escuchar (no hace `track`,
-   así el cliente no aparece como un cadete más). Antes de la primera oferta espera el primer estado de
-   Presence hasta `ESPERA_UBICACIONES_MS` (5 s). Normalmente llega en menos de un segundo y la oferta sale enseguida.
-3. **Lee de la BD los cadetes `disponible`** que todavía no vieron este pedido en esta búsqueda.
-4. **Elige al cadete:**
-   - **Modo `cercania`** (el inicial): calcula la distancia de cada cadete libre al punto de retiro y elige el
-     menor. Los que no tienen ubicación real quedan al final, por `id_cad`. A igual distancia gana el menor `id_cad`.
-   - **Modo `sin_distancia`**: el primer libre por `id_cad`.
-5. **Oferta**: `UPDATE Pedidos SET id_cadete = X, estado_pedido = 'libre'` solo si el pedido sigue sin oferta
-   vigente (bloqueo optimista), y broadcast `nuevo_pedido` al canal `pedidos-cadete-X`.
+1. **El pedido nace `pendiente`**, sin cadete (`crear_pedido.html`). El trigger `asignador_al_crear_pedido` llama
+   a `asignador.revisar(id_pedido)` en la misma transacción del alta.
+2. **Cadetes en turno**: los que tienen una fila en `cadetes_senal` con `ultima_senal` de los últimos 75 s,
+   `estado_cad` en `disponible` / `en_confirmacion` / `ocupado`, y ninguna fila en `ofertas_pedido` para este pedido.
+3. **Libre** = `estado_cad = 'disponible'` y sin ningún pedido a su nombre en `libre`, `en_confirmacion`,
+   `asignado` o `en_camino_entrega`. El resto de los que están en turno cuentan como **ocupados**.
+4. **Elige al cadete libre:**
+   - **Por cercanía** (mientras el pedido lleve menos de 3 ofertas y tenga coordenadas de retiro): el de menor
+     distancia al retiro. Los que no tienen ubicación real quedan al final. A igual distancia gana el menor `id_cad`.
+   - **Sin distancia**: el de menor `id_cad`.
+5. **Oferta**: `id_cadete = X`, `estado_pedido = 'libre'`, `oferta_vence_en = ahora + 20 s`, una fila en
+   `ofertas_pedido` (con `distancia_km` y `por_cercania`) y un broadcast `nuevo_pedido` a `pedidos-cadete-X`.
 6. **Respuesta del cadete**:
-   - Acepta → `asignado`, termina la búsqueda.
-   - Rechaza, no responde en `TIMEOUT_OFERTA_MS` (20 s) o devuelve la oferta porque está ocupado → se anota,
-     no se le vuelve a ofrecer en esta búsqueda y, si el modo es `cercania`, **suma un rechazo cercano**.
-7. **Al llegar a `RECHAZOS_MAX_CERCANIA` (3) rechazos cercanos** el motor pasa a `sin_distancia`. El canal de
-   Presence sigue abierto: ya no se usa para la distancia, pero sigue siendo la forma de saber quién está
-   realmente conectado.
-8. **Si no queda nadie libre**: espera hasta 60 s a que se libere un cadete ocupado; si no, cancela el pedido
-   con el motivo correspondiente ("Todos los cadetes rechazaron el pedido", "Ningún cadete se liberó a tiempo",
-   "No hay cadetes conectados").
+   - Acepta (`cadete_aceptar_pedido`) → `asignado`, termina la búsqueda.
+   - Rechaza (`cadete_rechazar_pedido`) → en la misma llamada se ofrece al siguiente.
+   - No responde → el latido (`asignador.tick`, cada 3 s) vence la oferta, le manda `pedido_retirado` para
+     cerrarle el modal y ofrece al siguiente.
+7. **Si no queda nadie libre**: si hay ocupados que todavía no lo vieron, espera hasta 60 s (`espera_desde`);
+   si no, cancela con el motivo: "No hay cadetes conectados", "Todos los cadetes rechazaron el pedido" o
+   "Ningún cadete se liberó a tiempo".
 
 ---
 
 ## De dónde sale la ubicación de cada cadete
 
-La tabla `Cadetes` no guarda ubicación. Cada cadete en turno la publica por **Realtime Presence** en el canal
-`cadetes-disponibles` desde la app de cadetes (`SistemaCadetes/Scripts/conexion_rt_pedidos_entrantes.js`), y la
-actualiza con cada lectura del GPS:
+Cada cadete en turno manda un **latido** cada 15 s con la función `cadete_latido(p_id_cad, p_lat, p_lng, p_gps_ms)`
+(`SistemaCadetes/Scripts/latido_cadete.js`). Se guarda en la tabla `cadetes_senal`:
 
-| Campo | Qué es |
+| Columna | Qué es |
 |---|---|
-| `id_cad` | id del cadete (la key de Presence es `cad_{id_cad}`) |
-| `coords` | `{ lat, lng }` |
-| `coords_ts` | hora (ms) del último fix GPS real. **`null` mientras el cadete transmite la ubicación por defecto** (centro de San Juan) porque todavía no tiene GPS o no dio permiso |
-| `estado_cad`, `nombre`, `patente`, `vehiculo_cad` | informativos (el motor no los usa) |
+| `id_cad` | id del cadete (una fila por cadete) |
+| `ultima_senal` | hora del servidor del último latido |
+| `lat`, `lng` | última ubicación real |
+| `ubicacion_en` | hora del último fix GPS real. **`null` si el cadete todavía no tiene GPS o no dio permiso** |
 
-El motor **solo usa `coords` que tengan `coords_ts`**. Sin ese campo, un cadete sin GPS parecería estar en el
-centro y "ganaría" pedidos que no le corresponden. Si un cadete tiene el dashboard abierto en varias pestañas,
-se usa la presencia con el `coords_ts` más nuevo.
+El asignador **solo mide distancia si `ubicacion_en` no es null**. Así un cadete sin GPS no "gana" pedidos con
+una ubicación por defecto: recibe ofertas, pero después de los que tienen ubicación.
 
-> Si se cambia el nombre del canal o de `coords_ts`, hay que cambiarlo en **los dos repos**.
-> `npm run verificar` avisa si desaparecen del código de clientes.
+`cadetes_senal` tiene seguridad por filas y ningún permiso para las apps: los clientes **no pueden ver** dónde
+están los cadetes. La app de cadetes sigue publicando además su ubicación por Realtime Presence en
+`cadetes-disponibles`, pero eso lo usa solo el radar del panel de admin; el asignador no lo mira.
+
+El latido se manda en el dashboard, en Rendición/Historial y **durante un viaje**. Por eso un cadete en viaje
+cuenta como ocupado y un pedido nuevo espera a que se libere en vez de cancelarse.
 
 ---
 
 ## Quién cuenta como conectado
 
-`Cadetes.estado_cad` no se limpia solo: si el cadete cierra la app o pierde señal sin tocar "Finalizar
-Turno" (`SistemaCadetes/Templates/dashboard.html`), la fila se queda en `'disponible'` u `'ocupado'` para
-siempre. Para no ofrecerle (ni esperar a) un cadete que en realidad no está, el motor cruza la BD con quién
-sigue presente en el canal `cadetes-disponibles`:
-
-- Si Presence sincronizó alguna vez en esta búsqueda, solo se considera a los `id_cad` que siguen ahí. Un
-  cadete que desapareció de Presence se descarta aunque su fila diga `'disponible'` u `'ocupado'`.
-- Si Presence nunca llegó a conectar (falló el canal), no hay señal confiable y se confía en `estado_cad`
-  tal cual está en la BD, como hacía el motor antes de este chequeo.
-
-Por eso Presence se mantiene abierto **toda la búsqueda**, incluso después de pasar a modo `sin_distancia`
-(ahí ya no se usa para la distancia, pero sigue haciendo falta para esto).
+- Con señal en los últimos **75 s** y `estado_cad` distinto de `desconectado`.
+- El latido sale cada 15 s; se toleran 75 s porque con la app en segundo plano el navegador puede demorar los
+  temporizadores hasta un minuto.
+- Si el cadete cierra la app o se queda sin red sin tocar "Finalizar Turno", su fila en `Cadetes` puede quedar
+  en `disponible` u `ocupado`, pero deja de llegar la señal y a los 75 s el asignador lo descarta.
+- Consecuencia: a un cadete que acaba de cerrar la app se le puede llegar a ofrecer un pedido durante ese
+  minuto. La oferta vence sola a los 20 s y pasa al siguiente.
 
 ---
 
 ## La distancia
 
-- Fórmula de **Haversine** (radio medio de la Tierra 6371 km): distancia **en línea recta**, no por calles.
+- Fórmula de **Haversine** (radio medio de la Tierra 6371 km), en `asignador.distancia_km`: distancia **en
+  línea recta**, no por calles.
 - Se mide **desde la ubicación del cadete hasta el punto de retiro** (`latitud_org`, `longitud_org`), porque
   es adonde tiene que ir primero.
 - Si el pedido no tiene coordenadas de retiro, no se puede medir y se ofrece por `id_cad`.
 
 ---
 
-## Qué cuenta como "rechazo cercano"
+## Qué cuenta para pasar a "sin distancia"
 
-| Situación | ¿Cuenta? |
+Cuenta **toda oferta de ese pedido que no terminó aceptada**, es decir, las filas de `ofertas_pedido`:
+
+| Situación | Resultado en `ofertas_pedido` |
 |---|---|
-| El cadete toca "Rechazar" | Sí |
-| El modal del cadete vence (15 s) o no responde en 20 s | Sí |
-| El cadete está ocupado (otra oferta, otro viaje o aceptando otro pedido) y la devuelve | Sí |
-| El cliente cancela el pedido | No (termina la búsqueda) |
-| Ofertas hechas ya en modo `sin_distancia` | No (ya no se cuenta) |
+| El cadete toca "Rechazar", o vence su modal de 15 s | `rechazada` |
+| El cadete acepta pero ya tenía un viaje en curso (dashboard en dos pestañas) | `rechazada` |
+| No responde en 20 s | `vencida` |
+| El cliente cancela, o la búsqueda vence a los 30 min | `retirada` (termina la búsqueda) |
 
-El contador vive **en memoria**, en la búsqueda. Si el cliente recarga `pedido_activo.html`, la búsqueda se
-reanuda y el contador vuelve a cero (igual que la lista de cadetes que ya rechazaron).
+Al llegar a 3 filas, las ofertas siguientes se hacen por `id_cad` (`por_cercania = false`). El conteo vive en
+la base: no se pierde si el cliente recarga o cierra la app.
 
 ---
 
@@ -141,57 +127,64 @@ reanuda y el contador vuelve a cero (igual que la lista de cadetes que ya rechaz
 
 | Caso | Qué pasa |
 |---|---|
-| Cadete sin permiso de GPS o sin señal todavía | Recibe ofertas igual, pero después de los que tienen ubicación |
-| Presence no conecta | Se ofrece igual a los 5 s confiando en `estado_cad` de la BD tal cual está, sin filtrar por conectividad; el orden es por `id_cad` |
-| Cadete cerró la app sin "Finalizar Turno" (`estado_cad` quedó viejo en la BD) | Se descarta: no cuenta ni como libre ni como ocupado |
-| Ningún cadete libre, pero hay ocupados **conectados** | Espera hasta 60 s a que se libere uno; el primero que se libera recibe la oferta |
-| Nadie conectado (aunque la BD tenga filas `'disponible'`/`'ocupado'` viejas) | Se cancela al instante: "No hay cadetes conectados" |
-| Varios pedidos del mismo comercio a la vez | Todos apuntan al mismo cadete cercano y la primera oferta que le llega queda abierta. Los otros motores lo ven `en_confirmacion` en la BD y pasan al siguiente más cercano; si alcanzaron a ofrecérselo, él lo devuelve como "ocupado" (cuenta como rechazo cercano) |
-| Presence llega tarde (después de la primera oferta) | Esa primera oferta sale por `id_cad`; las siguientes ya usan la ubicación |
-| El cliente cierra el seguimiento más de 30 min | Al volver, la búsqueda se cancela ("La búsqueda de cadete venció") en vez de ofrecerse tarde |
+| Cadete sin permiso de GPS o sin señal de GPS todavía | Recibe ofertas igual, pero después de los que tienen ubicación |
+| Cadete que cerró la app sin "Finalizar Turno" | A los 75 s sin señal se descarta: no cuenta ni como libre ni como ocupado |
+| Ningún cadete libre, pero hay ocupados en turno | El pedido espera hasta 60 s; apenas uno se libera (a lo sumo 3 s después) recibe la oferta |
+| Nadie en turno | Se cancela al instante: "No hay cadetes conectados" |
+| Varios pedidos al mismo tiempo | Las decisiones pasan de a una (bloqueo en la base): el segundo pedido ve que el cadete más cercano ya tiene una oferta y va al siguiente. Un cadete nunca tiene dos ofertas a la vez |
+| El cadete acepta justo cuando vence la oferta | Gana el que llega primero a la base; el otro ve "ya no está disponible" o el modal cerrado |
+| El cliente cierra la app | La búsqueda sigue. Al aceptar un cadete le llega el aviso push |
+| Búsqueda de más de 30 min (`Pedidos.creado_en`) | Se cancela: "La búsqueda de cadete venció" |
 
 ---
 
 ## Configuración
 
-En `CONFIG_ASIGNACION` (`scripts/script_asignacion.js`):
+Los plazos están escritos en las funciones de la migración (no hay tabla de configuración). Para cambiar uno
+hay que hacer una migración nueva que reemplace la función:
 
-| Clave | Valor | Para qué |
+| Qué | Valor | Dónde |
 |---|---|---|
-| `RECHAZOS_MAX_CERCANIA` | `3` | Rechazos cercanos antes de pasar a asignar sin distancia |
-| `ESPERA_UBICACIONES_MS` | `5000` | Espera máxima al primer estado de Presence antes de la primera oferta |
-| `TIMEOUT_OFERTA_MS` | `20000` | Tiempo para que el cadete responda. Tiene que ser **mayor** que el modal del cadete (15 s) |
-| `INTERVALO_REVISION_MS` | `3000` | Latido de respaldo por si se pierde un evento realtime |
-| `ESPERA_MAX_OCUPADOS_MS` | `60000` | Espera a que se libere un cadete ocupado antes de cancelar |
-| `VENCIMIENTO_BUSQUEDA_MS` | 30 min | Un pedido sin cadete después de esto se cancela en vez de ofrecerse |
+| Ofertas sin aceptar antes de ignorar la distancia | `3` | `asignador.ofrecer_siguiente` |
+| Tiempo para que el cadete responda | 20 s | `asignador.ofrecer_siguiente` y `asignador.revisar`. Tiene que ser **mayor** que el modal del cadete (15 s) |
+| Latido del servidor | 3 s | pg_cron, tarea `asignador-tick` |
+| Espera a que se libere un cadete ocupado | 60 s | `asignador.ofrecer_siguiente` |
+| Vencimiento de una búsqueda | 30 min | `asignador.revisar` |
+| Señal del cadete: cada cuánto / tolerancia | 15 s / 75 s | `Scripts/latido_cadete.js` / `asignador.ofrecer_siguiente` |
+
+La app de clientes repite 20 s, 60 s y 30 min en `scripts/busqueda_pedido.js`, solo para mostrar las cuentas
+regresivas: si se cambian en el servidor, cambiarlos también ahí.
 
 ---
 
 ## Qué ve el cliente
 
-El motor no toca el DOM: emite eventos y `pedido_activo.html` los muestra.
+La app de clientes no decide nada: arma el texto con `textoBusqueda(pedido)` a partir de la fila del pedido.
 
 | Momento | Título | Detalle |
 |---|---|---|
-| Esperando ubicaciones | Buscando el cadete más cercano | Ubicando a los cadetes en turno |
-| Oferta enviada | Ofreciendo a {nombre} | Enviando oferta • a 850 m del retiro • Intento 1 |
-| El cadete la está viendo | Ofreciendo a {nombre} | Viendo la oferta • a 1,2 km del retiro • Intento 2 • 12s |
-| Todos ocupados | Todos los cadetes están ocupados | Esperando que se libere uno • 45s |
+| Oferta enviada (`libre`) | Ofreciendo a {nombre} | Enviando oferta • 18s |
+| El cadete la está viendo (`en_confirmacion`) | Ofreciendo a {nombre} | Viendo la oferta • 12s |
+| Todos ocupados (`pendiente` con `espera_desde`) | Todos los cadetes están ocupados | Esperando que se libere uno • 45s |
+| Entre ofertas | Buscando cadete | Estamos ofreciendo tu pedido a los cadetes disponibles |
 
-La distancia solo aparece cuando la oferta se hizo por cercanía y el cadete tenía ubicación.
+El cliente ya no ve la distancia del cadete ni el número de intento: esos datos quedan en `ofertas_pedido`.
 
 ---
 
 ## Lo que tiene que cumplir la app de cadetes
 
-Además del contrato general (sección 7.8 de `contrato_app_cadetes.md`):
+Además del contrato general (sección 7.6 de `contrato_app_cadetes.md`):
 
-- **Publicar `coords` y `coords_ts` en Presence** mientras está en turno (`conexion_rt_pedidos_entrantes.js`).
-- **Mantener `estado_cad` confiable**, porque es la disponibilidad que usa el motor (`Templates/dashboard.html`):
+- **Mandar el latido** mientras está en turno, con la ubicación real cuando la tiene (`Scripts/latido_cadete.js`).
+- **Mantener `estado_cad` confiable**, porque es parte de la disponibilidad que usa el asignador
+  (`Templates/dashboard.html`):
   - las escrituras salen de a una y en orden (`escribirEstadoCad`);
-  - abrir y cerrar ofertas solo mueve `disponible` ↔ `en_confirmacion` y nunca pisa un `ocupado`;
-  - desde que el cadete toca "Aceptar" hasta que entra al viaje, toda oferta nueva se devuelve (`aceptandoPedido`);
-  - antes de aceptar, se verifica que no tenga otro viaje en curso (caso dashboard abierto en dos pestañas).
+  - abrir y cerrar ofertas solo mueve `disponible` ↔ `en_confirmacion` y nunca pisa un `ocupado`.
+- **Ver, aceptar y rechazar por las funciones del servidor** (`cadete_ver_oferta`, `cadete_aceptar_pedido`,
+  `cadete_rechazar_pedido`). Escribir `estado_pedido` o `id_cadete` directo durante la búsqueda da error.
+- **Anotar el rechazo en el momento de tocar el botón**, antes de esperar al servidor: si no, el verificador
+  reabre el modal unos segundos mientras el pedido ya se le muestra al siguiente cadete.
 - **Cambios de estado del viaje condicionales** (`conexion_rt_pedido_en_curso.js`): `en_camino_entrega` solo
   desde `asignado`, `entregado` solo desde `asignado`/`en_camino_entrega`.
 
@@ -199,42 +192,46 @@ Además del contrato general (sección 7.8 de `contrato_app_cadetes.md`):
 
 ## Cómo verificarlo
 
-**En la consola del navegador del cliente** (página de seguimiento):
+**Historial de ofertas de un pedido** (editor SQL de Supabase):
 
-```
-[Asignación] Pedido #12: ofreciendo a cadete #3 (intento 1, a 0.80 km del retiro).
-[Asignación] Pedido #12: cadete #3 rechazó.
-[Asignación] Pedido #12: ofreciendo a cadete #5 (intento 2, a 1.40 km del retiro).
-...
-[Asignación] Pedido #12: 3 cadetes cercanos no lo tomaron, se asigna sin tener en cuenta la distancia.
-[Asignación] Pedido #12: ofreciendo a cadete #1 (intento 4, sin tener en cuenta la distancia).
+```sql
+select id_cadete, ofrecida_en, resultado, resuelta_en, round(distancia_km::numeric, 2) as km, por_cercania
+from ofertas_pedido where id_pedido = 392 order by id_oferta;
 ```
 
-Si un cadete aparece "sin ubicación conocida", no está publicando `coords_ts` (sin GPS o sin permiso).
+Si `km` viene vacío con `por_cercania = true`, ese cadete no tenía ubicación (sin GPS o sin permiso).
 
-**Pruebas manuales**: `contrato_app_cadetes.md`, sección 12. Las de cercanía son la 1 a la 4; las del dashboard
-en dos pestañas y de aceptar con otra oferta en camino, la 14 a la 16.
+**Quién está en turno ahora:**
+
+```sql
+select c.id_cad, c.nombre_cad, c.estado_cad, now() - s.ultima_senal as hace, s.ubicacion_en is not null as con_gps
+from "Cadetes" c join cadetes_senal s using (id_cad)
+where s.ultima_senal > now() - interval '75 seconds';
+```
+
+**Que el latido esté corriendo:**
+
+```sql
+select status, count(*), max(start_time) from cron.job_run_details
+where start_time > now() - interval '5 minutes' group by status;
+```
+
+**Pruebas manuales**: `contrato_app_cadetes.md`, sección 12. Las de cercanía son la 1 a la 4.
 
 **Antes de cada commit**: `npm run verificar`.
 
 ---
 
-## Pruebas de estrés realizadas
+## Pruebas realizadas
 
-Antes de publicar el cambio se simularon **4000 corridas** con el código real del motor y de la conexión
-realtime del cadete, sobre un Supabase simulado. Se usaron 8 escenarios: uso normal, estrés, red muy mala
-(hasta 6 s por viaje de red y 50 % de mensajes realtime perdidos), el mismo pedido en dos dispositivos, cadete
-con dos pestañas, cliente que abandona el seguimiento, muchos pedidos del mismo comercio y respuestas al límite
-del tiempo. En ninguna corrida:
-
-- un pedido quedó aceptado por dos cadetes, ni un cadete con dos viajes;
-- se pisó la oferta de otro cadete ni hubo transiciones de estado inválidas;
-- quedó un pedido o una búsqueda colgados;
-- se ofreció un pedido vencido.
-
-La oferta fue al cadete más cercano en el 99 % de los casos con uso normal y en el 88 % con la red muy mala.
-Cuando no acierta es porque el motor decide con datos de hace un viaje de red: el cadete se movió o cambió
-de estado mientras tanto.
+- **Antes de aplicar** (15/11/2026): la migración completa y 11 casos se corrieron en la base real dentro de
+  una transacción que se deshizo al final: sin cadetes, oferta al más cercano, bloqueo de escrituras directas,
+  ver/rechazar/aceptar, vencimiento de oferta, espera por ocupados, cancelación del cliente, cadete con viaje
+  que no recibe ofertas, señal vieja y vencimiento a los 30 min.
+- **En producción** (15/11/2026): rechazo que pasa al segundo cadete, aceptación y entrega, oferta que vence
+  sola, cliente con la app cerrada y pedido sin cadetes conectados.
+- Las 4000 corridas simuladas que se hicieron con el motor anterior (el del navegador) ya no aplican: ese
+  código se eliminó.
 
 ---
 
@@ -242,13 +239,13 @@ de estado mientras tanto.
 
 - **Distancia en línea recta**, no por calles: un cadete del otro lado de una avenida sin cruce puede "ganar"
   aunque tarde más.
-- **El motor corre en el navegador del cliente**, que por eso escucha Presence de `cadetes-disponibles` y
-  puede ver la posición de todos los cadetes en turno. Se resuelve moviendo el motor a una Edge Function o
-  haciendo privado el canal.
-- **El contador de rechazos se reinicia** si el cliente recarga la página de seguimiento.
-- **Dos viajes a la vez**: la app lo evita, pero si el cadete aceptara dos ofertas distintas en dos pestañas en
-  el mismo instante queda una ventana mínima. Para cerrarla del todo se puede crear este índice en Supabase
-  (antes, confirmar que ningún cadete tenga hoy dos pedidos en viaje):
+- **Si no hay cadetes libres, el pedido espera 60 s y se cancela.** Falta la cola de pedidos (sección 14.2 del
+  contrato).
+- **Los cadetes no inician sesión en Supabase**: las funciones `cadete_*` confían en el `id_cad` que manda la
+  app. Va junto con el pendiente de seguridad de las tablas.
+- **Dos viajes a la vez**: el servidor no le ofrece pedidos a un cadete con viaje y `cadete_aceptar_pedido` lo
+  vuelve a comprobar. Como red de seguridad adicional se puede crear este índice (ningún cadete tiene hoy dos
+  pedidos en viaje):
 
   ```sql
   create unique index if not exists pedidos_un_viaje_activo_por_cadete
@@ -260,11 +257,10 @@ de estado mientras tanto.
 
 ## Archivos involucrados
 
-| Repo | Archivo | Qué hace |
-|---|---|---|
-| SistemaClientes | `scripts/script_asignacion.js` | Motor: elección por cercanía, contador de rechazos, Presence |
-| SistemaClientes | `templates/pedido_activo.html` | Arranca el motor y muestra su estado |
-| SistemaClientes | `docs/contrato_app_cadetes.md` | Especificación completa (sección 7) |
-| SistemaCadetes | `Scripts/conexion_rt_pedidos_entrantes.js` | Publica `coords` y `coords_ts` en Presence |
-| SistemaCadetes | `Templates/dashboard.html` | Ofertas del lado del cadete y `estado_cad` |
-| SistemaCadetes | `Scripts/conexion_rt_pedido_en_curso.js` | Estados del viaje (condicionales) |
+| Archivo | Qué tiene |
+|---|---|
+| `SistemaClientes/supabase/migrations/20261115100000_asignador_en_servidor.sql` | Tablas, funciones, triggers y tareas del asignador; al final, la vuelta atrás |
+| `SistemaClientes/scripts/busqueda_pedido.js` | Estados de búsqueda, texto del panel y cancelar |
+| `SistemaClientes/templates/pedido_activo.html` | Seguimiento: escucha el pedido y muestra la búsqueda |
+| `SistemaCadetes/Scripts/latido_cadete.js` | Señal de vida y ubicación del cadete |
+| `SistemaCadetes/Templates/dashboard.html` | Modal de oferta: ver, aceptar y rechazar |

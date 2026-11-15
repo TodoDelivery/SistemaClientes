@@ -41,16 +41,22 @@ Cada enlace es relativo **al archivo que lo escribe**: desde una página, un mó
 │
 ├── scripts/
 │   ├── conexion_supabase.js  Cliente de Supabase (URL + clave pública)
-│   ├── script_asignacion.js  Motor de asignación de cadetes (sin DOM; avisa por eventos)
+│   ├── busqueda_pedido.js    Búsqueda de cadete: estados, texto del panel y cancelar (la asignación la hace el servidor)
 │   ├── sesion_cliente.js     Sesión, datos del cliente, favoritas, consultas comunes
 │   ├── chat_pedido.js        Historial del chat: mensajes en vivo + guardado en Pedidos.Chat_pedido
 │   ├── ui_cliente.js         Barra superior e inferior, toasts, hojas modales, formatos, íconos
-│   ├── direcciones.js        Búsqueda de direcciones y dirección de un punto (Nominatim)
+│   ├── direcciones.js        Búsqueda de direcciones (índice local + Nominatim) y dirección de un punto
+│   ├── indice_direcciones.js Buscador sobre el índice local de Pico Truncado (sin DOM ni red)
 │   ├── tema_cliente.js       Colores y fuente de Tailwind
 │   └── verificar.mjs         Verificación estática (ver "Cómo no romperla"). No se publica
 │
 ├── styles/
 │   └── estilos_cliente.css   Estilos compartidos (zonas seguras, Leaflet oscuro, animaciones)
+│
+├── datos/
+│   └── pico_truncado.json    Índice de calles, números, esquinas, barrios y lugares (generado, no editar)
+├── herramientas/
+│   └── generar_indice_direcciones.mjs   Arma datos/pico_truncado.json desde OpenStreetMap. No se publica
 │
 ├── docs/contrato_app_cadetes.md   Especificación completa: datos, estados, motor, canales
 ├── docs/asignacion_por_cercania.md   Cómo se elige al cadete (cercanía + 3 rechazos) y cómo verificarlo
@@ -63,8 +69,8 @@ Qué importa cada página:
 | Página | Usa |
 |---|---|
 | todas menos login | `sesion_cliente.js` + `ui_cliente.js` |
-| `crear_pedido.html` | + `script_asignacion.js` (cancelar pedidos viejos) + `direcciones.js` |
-| `pedido_activo.html` | + `script_asignacion.js` (motor completo) + `chat_pedido.js` |
+| `crear_pedido.html` | + `busqueda_pedido.js` (cancelar pedidos viejos) + `direcciones.js` |
+| `pedido_activo.html` | + `busqueda_pedido.js` (texto de la búsqueda, cancelar) + `chat_pedido.js` |
 | `configuracion.html` | + `direcciones.js` |
 
 ---
@@ -76,6 +82,7 @@ Requisito: Node 18 o superior (solo para el servidor local y la verificación).
 ```bash
 npm run dev          # http://localhost:5173
 npm run verificar    # chequeo estático, tarda segundos
+npm run indice       # regenera datos/pico_truncado.json desde OpenStreetMap (necesita internet)
 ```
 
 Sirve cualquier servidor estático, por ejemplo Live Server de VS Code. **No abrir los HTML con doble clic** (`file://`): los módulos no cargan. GPS, Web Locks y el portapapeles requieren HTTPS o `localhost`.
@@ -103,7 +110,7 @@ Los datos de conexión están en [`scripts/conexion_supabase.js`](scripts/conexi
 | Tabla | Lee | Escribe |
 |---|---|---|
 | `Clientes` | `id_cliente, nombre_cliente, telefono_cliente, f_loggueo_cliente, ubicaciones_favs` | INSERT de su fila; UPDATE de `nombre_cliente`, `telefono_cliente`, `ubicaciones_favs` |
-| `Pedidos` | `*` de sus pedidos | INSERT; UPDATE de `estado_pedido`, `id_cadete` (motor de asignación) |
+| `Pedidos` | `*` de sus pedidos | INSERT; UPDATE de `Chat_pedido`. `estado_pedido` e `id_cadete` los mueve el servidor (cancelar: función `cancelar_pedido_cliente`) |
 | `Cadetes` | `id_cad, nombre_cad, alias_cad, estado_cad, telef_cad, vehiculo_cad, patente` | — |
 | `Datos_cotiz` | `bajada_band, tarifa_km, porc_tarif_dinamica` (primera fila; la columna `Porc_Comision` es de cadetes y admin) | — |
 
@@ -141,7 +148,7 @@ create policy "cadetes_select" on public."Cadetes" for select to authenticated u
 
 ### 4. Realtime
 
-- *Database → Replication*: la tabla `Pedidos` tiene que estar publicada. El seguimiento y el motor escuchan `postgres_changes` de tipo UPDATE.
+- *Database → Replication*: la tabla `Pedidos` tiene que estar publicada. El seguimiento escucha `postgres_changes` de tipo UPDATE (así llega todo lo que decide el asignador).
 - Los canales de broadcast no necesitan configuración.
 
 ---
@@ -155,7 +162,7 @@ create policy "cadetes_select" on public."Cadetes" for select to authenticated u
 `netlify.toml` ya incluye:
 
 - **`Cache-Control: no-cache`**: los `.js` no tienen hash en el nombre. Sin esto, después de un deploy el navegador puede mezclar un HTML nuevo con un módulo viejo y la página no carga.
-- **404 para `docs/`, `README.md`, `package.json` y `scripts/verificar.mjs`**, que no son parte de la app. Ojo: `scripts/` **sí** se publica, porque ahí viven los módulos de la app; solo se bloquea el verificador.
+- **404 para `docs/`, `herramientas/`, `README.md`, `package.json` y `scripts/verificar.mjs`**, que no son parte de la app. Ojo: `scripts/` **sí** se publica, porque ahí viven los módulos de la app; solo se bloquea el verificador.
 
 Cualquier otro hosting estático sirve (Vercel, GitHub Pages, Cloudflare Pages) siempre que respete esas dos cosas y sirva por HTTPS.
 
@@ -163,7 +170,7 @@ Cualquier otro hosting estático sirve (Vercel, GitHub Pages, Cloudflare Pages) 
 
 ## Contrato con la app de cadetes
 
-La especificación completa está en [`docs/contrato_app_cadetes.md`](docs/contrato_app_cadetes.md): secciones 2 (datos y estados), 7 (motor), 8 (seguimiento) y 9 (chat). Resumen de lo que **no se puede cambiar de un solo lado**:
+La especificación completa está en [`docs/contrato_app_cadetes.md`](docs/contrato_app_cadetes.md): secciones 2 (datos y estados), 7 (asignación en el servidor), 8 (seguimiento) y 9 (chat). Resumen de lo que **no se puede cambiar de un solo lado**:
 
 **Estados de `Pedidos.estado_pedido`**
 
@@ -180,13 +187,13 @@ La especificación completa está en [`docs/contrato_app_cadetes.md`](docs/contr
 | `pedido-en-curso-{id}` | `cadete_conectado` | Cadete → Cliente | `{ id_pedido, id_cadete, patente, vehiculo, timestamp }` |
 | `pedido-en-curso-{id}` | `ubicacion_cadete` | Cadete → Cliente | `{ id_pedido, id_cadete, patente, vehiculo, coords: { lat, lng, accuracy, heading, speed, timestamp } }` |
 | `pedido-en-curso-{id}` | `mensaje_chat` | ambos | `{ id_mensaje, id_pedido, id_emisor, id_receptor, remitente, texto, hora: 'HH:MM', timestamp }` |
-| `cadetes-disponibles` | Presence (`track`) | Cadete → todos | `{ id_cad, nombre, coords: { lat, lng }, coords_ts, estado_cad, patente, vehiculo_cad }` |
+| `cadetes-disponibles` | Presence (`track`) | Cadete → panel de admin (esta app ya no lo escucha) | `{ id_cad, nombre, coords: { lat, lng }, coords_ts, estado_cad, patente, vehiculo_cad }` |
 
 **Chat guardado:** cada `mensaje_chat` queda además en `Pedidos.Chat_pedido` (texto con un array JSON de esos mensajes, sin `id_pedido`). Lo escriben las dos apps con `chat_pedido.js`, que está **copiado en los dos repos**: se cambian juntos.
 
 **Tiempos:** la oferta al cadete vence a los `TIMEOUT_OFERTA_MS = 20000` (20 s). Tiene que ser **mayor** que el timer del modal del cadete (15 s).
 
-**Asignación por cercanía:** el motor ofrece primero al cadete libre más cercano al punto de retiro (Haversine con la ubicación de Presence; solo cuentan las `coords` con `coords_ts`, que es la hora del último fix GPS). Después de `RECHAZOS_MAX_CERCANIA = 3` ofertas sin aceptar, sigue por `id_cad` sin tener en cuenta la distancia.
+**Asignación por cercanía:** el servidor ofrece primero al cadete libre más cercano al punto de retiro (Haversine con la ubicación que cada cadete manda en su latido, `cadete_latido`; solo cuenta si tiene un fix GPS real). Después de 3 ofertas sin aceptar, sigue por `id_cad` sin tener en cuenta la distancia.
 
 **Regla:** cualquier cambio en estas tablas va en **los dos repos a la vez**, y se actualiza `docs/contrato_app_cadetes.md`. `npm run verificar` avisa si alguno de estos nombres desaparece del código de clientes, pero no puede revisar el otro repo.
 
@@ -214,7 +221,7 @@ No hay CI: la verificación se corre a mano antes de cada commit.
 
 - **Texto de usuarios siempre como texto:** `textContent`, o `escaparHtml()` si hay que armar HTML. Aplica a chat, direcciones, nombres, favoritas y `inform_pedido`. Nunca meterlo crudo en `innerHTML`.
 - **Escrituras sobre `Pedidos` siempre condicionales** (bloqueo optimista): `.eq('id_pedido', X).in('estado_pedido', [...])` y compañía. Si el UPDATE no devuelve filas, alguien cambió el pedido en el mismo instante; hay que releer, no pisar. Ver `script_asignacion.js`.
-- **`script_asignacion.js` no toca el DOM.** La página se entera por `suscribirMotorAsignacion()`. Así el motor se puede mover a una Edge Function sin reescribir la UI.
+- **Esta app no asigna cadetes.** No escribir `estado_pedido` ni `id_cadete` de un pedido en búsqueda (el servidor lo rechaza): la UI se arma leyendo la fila del pedido (`textoBusqueda()` en `busqueda_pedido.js`).
 - **Clases de Tailwind escritas completas** (`'bg-brand-accent'`, no `'bg-' + color`). El CDN genera las clases que encuentra en el DOM.
 - **Un `<fieldset>` con contenido que scrollea lleva `min-w-0`**. Si no, ensancha la página más que la pantalla del celular.
 - Páginas nuevas: copiar la estructura de `dashboard.html` (`#appBar`, `#barraInferior`, `layout_previo.js`, `#cargandoPagina`, `#contenidoPagina`, y `data-pestana`/`data-titulo` en el `<body>`), llamar a `requerirCliente()` y `montarLayoutCliente()`, y si va en la barra inferior, sumarla a `PESTANAS` en `layout_previo.js`.
@@ -230,6 +237,7 @@ Con 2 o 3 sesiones de cadete abiertas en la app de cadetes:
 3. Ningún cadete en turno → cancelado con "No hay cadetes conectados".
 4. El cadete no responde → a los 20 s pasa al siguiente.
 5. "Cancelar pedido" mientras busca → al cadete con la oferta abierta se le cierra.
+   Cerrar la app mientras busca → la búsqueda sigue y llega el aviso push cuando un cadete acepta.
 6. Perfil: cambiar teléfono, agregar, editar y borrar una favorita; usarla en "Pedir".
 7. En el celular (o DevTools a 360 px): nada se sale de la pantalla y la barra inferior no tapa botones.
 
@@ -252,13 +260,15 @@ Después de actualizar: `npm run verificar` y las pruebas manuales.
 
 ## Decisiones y limitaciones conocidas
 
-- **El motor de asignación corre en el navegador del cliente**, dentro de `pedido_activo.html`. Si el cliente cierra esa pantalla, la búsqueda se pausa (la página avisa antes de salir) y se retoma al volver a abrirla. Está previsto moverlo a una Supabase Edge Function cuando exista la UI de cadetes definitiva.
-- **Varias pestañas con el mismo pedido:** solo una corre el motor (Web Locks); si se cierra, otra toma el control.
-- **Búsquedas abandonadas:** un pedido que sigue sin cadete más de 30 minutos (`VENCIMIENTO_BUSQUEDA_MS`) se cancela al abrir la app, en vez de ofrecerse días después.
-- **Al retomar una búsqueda pausada** se puede volver a ofrecer a un cadete que ya había rechazado: el registro de rechazos vive en memoria. Por lo mismo, la cuenta de rechazos por cercanía vuelve a cero. Se resuelve con la Edge Function.
-- **Ubicación de los cadetes a la vista del cliente:** para asignar por cercanía, el navegador del cliente escucha Presence de `cadetes-disponibles`, que trae la posición GPS de todos los cadetes en turno. El canal ya era público (el panel de admin lo usa), pero con el motor en el cliente cualquier cliente puede leer esas posiciones. Se resuelve con la Edge Function o pasando el canal a privado.
+La lista completa de pendientes (cola de pedidos, cálculos en el servidor y mejoras menores) está en la
+[sección 14 del contrato](docs/contrato_app_cadetes.md#14-fuera-de-alcance--pendiente).
+
+- **La asignación de cadetes la hace el servidor** (funciones de Postgres + pg_cron, `supabase/migrations/20261115100000_asignador_en_servidor.sql`; ver la [sección 7 del contrato](docs/contrato_app_cadetes.md)). Esta app crea el pedido y solo mira cómo avanza: el cliente puede cerrarla y la búsqueda sigue. `scripts/busqueda_pedido.js` arma el texto del panel a partir de la fila del pedido.
+- **Durante la búsqueda la app no puede escribir `estado_pedido` ni `id_cadete`:** el trigger `asignador_guardia` rechaza esos `UPDATE`. Para cancelar se usa la función `cancelar_pedido_cliente`.
+- **Búsquedas abandonadas:** un pedido que sigue sin cadete más de 30 minutos lo cancela el servidor.
+- **Si el latido de pg_cron se detiene** (`select * from cron.job` no muestra `asignador-tick`), las ofertas dejan de vencer y los pedidos en espera no se retoman; la primera oferta y los rechazos siguen funcionando porque no dependen del latido.
 - **El total se calcula en el cliente** (`coste_pedido`). Con backend, recalcularlo del lado del servidor.
 - **El chat se guarda en `Pedidos.Chat_pedido`** además de ir por broadcast. Cliente y cadete escriben la misma columna sin bloqueo, así que `chat_pedido.js` guarda siempre la unión de mensajes y la repara si una escritura pisó a la otra. Con backend conviene pasarlo a una función que agregue el mensaje de forma atómica.
-- **Direcciones:** se usa Nominatim (OpenStreetMap), un servicio público con máximo 1 consulta por segundo y sin autocompletado. Está bien para bajo volumen; con muchos usuarios hay que pasar a un proveedor con contrato.
+- **Direcciones:** mientras se escribe, la app sugiere desde `datos/pico_truncado.json`, un índice de Pico Truncado armado con datos de OpenStreetMap (calles con número, esquinas, barrios y lugares). Los números que no están cargados en OSM se estiman con la numeración de la calle y la app avisa que la ubicación es aproximada. Lo que no está en el índice se busca con el botón en Nominatim, un servicio público con máximo 1 consulta por segundo y sin autocompletado. OSM tiene pocos comercios cargados: los que falten se pueden agregar en [openstreetmap.org](https://www.openstreetmap.org) y regenerar con `npm run indice`. Los datos son ODbL: el índice lleva la atribución.
 - **Tailwind por CDN** muestra un aviso en la consola de que no es para producción. Funciona igual; a futuro conviene compilarlo.
 - **Teléfonos de prueba:** `549264123456` y `549264000000` (los que cargaba el prototipo) se tratan como "sin teléfono" y la app pide completarlo.
