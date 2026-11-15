@@ -199,7 +199,7 @@
 
   <script type="module">
     import { supabase } from '../scripts/conexion_supabase.js';
-    import { ESTADOS_BUSQUEDA, cancelarBusquedaPorCliente } from '../scripts/script_asignacion.js';
+    import { ESTADOS_BUSQUEDA, cancelarBusquedaPorCliente } from '../scripts/busqueda_pedido.js';
     import {
       PAGINAS, requerirCliente, buscarPedidoEnCurso, obtenerFilaCliente, modificarFavoritas, nuevaFavorita, MAX_FAVORITAS
     } from '../scripts/sesion_cliente.js';
@@ -876,7 +876,7 @@
           return;
         }
 
-        // 2. ¿Otro pedido sigue buscando cadete? El motor no corre en esta página: se consulta la BD
+        // 2. ¿Otro pedido sigue buscando cadete? Se consulta la BD
         const { data: enBusqueda, error: errBusqueda } = await supabase
           .from('Pedidos')
           .select('id_pedido')
@@ -916,7 +916,7 @@
           return;
         }
 
-        // 4. Insertar: el pedido nace sin cadete, el motor de asignación lo ofrece de a un cadete por vez
+        // 4. Insertar: el pedido nace sin cadete; el asignador del servidor lo ofrece de a un cadete por vez
         setBotonCrear(true, 'Pidiendo...');
         const { total } = calcularCotizacion();
         const { data: pedidoInsertado, error } = await supabase
@@ -939,7 +939,7 @@
 
         if (error) throw error;
 
-        // 5-6. El seguimiento y el motor de asignación arrancan en pedido_activo.html
+        // 5-6. El servidor ya está buscando cadete: pedido_activo.html muestra el seguimiento
         redirigiendo = true;
         window.location.href = `${PAGINAS.pedidoActivo}?id_pedido=${encodeURIComponent(pedidoInsertado.id_pedido)}`;
       } catch (err) {

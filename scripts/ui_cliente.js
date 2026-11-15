@@ -4,7 +4,7 @@
 // Barra superior, barra de navegación inferior, avisos (toasts), hojas inferiores y formatos.
 // Cada página tiene <header id="appBar">, <nav id="barraInferior">, <div id="cargandoPagina"> y
 // <main id="contenidoPagina">; layout_previo.js pinta las barras y montarLayoutCliente() las completa.
-import { esBusquedaVencida } from './script_asignacion.js';
+import { esBusquedaVencida } from './busqueda_pedido.js';
 import { iniciarAvisoInstalacion } from './pwa.js';
 
 // -------------------------------------------------------------------------

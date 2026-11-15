@@ -1,6 +1,16 @@
 # Asignación de pedidos por cercanía
 
-Cómo el motor de asignación (`scripts/script_asignacion.js`) elige a qué cadete ofrecerle un pedido nuevo.
+> **Actualización del 15/11/2026: la asignación pasó al servidor.** La regla de cercanía de este documento
+> es la misma, pero ya no la ejecuta `scripts/script_asignacion.js` en el navegador del cliente (ese archivo
+> se eliminó): la ejecutan las funciones de Postgres de
+> `supabase/migrations/20261115100000_asignador_en_servidor.sql`. Cambios a tener en cuenta al leer lo que sigue:
+> - La ubicación y la conexión de cada cadete salen de su latido (`cadete_latido`, tabla `cadetes_senal`), no de
+>   Realtime Presence. El cliente ya no escucha `cadetes-disponibles`.
+> - Los rechazos se guardan en `ofertas_pedido`: no se pierden al recargar.
+> - Las secciones "Cómo verificarlo", "Pruebas de estrés realizadas" y "Limitaciones conocidas" describen el motor anterior.
+> - La descripción vigente y completa está en la sección 7 del contrato.
+
+Cómo el motor de asignación elige a qué cadete ofrecerle un pedido nuevo.
 La especificación completa del motor, los estados y los canales está en
 [`contrato_app_cadetes.md`](contrato_app_cadetes.md) (sección 7); acá se explica la regla de cercanía y lo
 que hay que saber para mantenerla.

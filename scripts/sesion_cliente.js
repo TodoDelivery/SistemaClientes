@@ -4,7 +4,7 @@
 // Usado por home.html, dashboard.html, crear_pedido.html, pedido_activo.html y configuracion.html.
 // login_google.html es la única página que crea la fila en 'Clientes' (pide el teléfono).
 import { supabase } from './conexion_supabase.js';
-import { ESTADOS_BUSQUEDA, esBusquedaVencida, vencerBusquedasAbandonadas } from './script_asignacion.js';
+import { ESTADOS_BUSQUEDA, esBusquedaVencida } from './busqueda_pedido.js';
 import { desactivarAvisos } from './avisos_push.js';
 
 export const PAGINAS = {
@@ -119,15 +119,6 @@ export async function requerirCliente() {
   if (!fila) {
     window.location.replace(PAGINAS.login);
     return null;
-  }
-
-  // Pedidos que quedaron buscando cadete sin motor (se cerró la app a mitad): se cancelan antes de
-  // mostrar nada, para que no aparezcan "buscando cadete" días después ni se vuelvan a ofrecer
-  try {
-    const vencidos = await vencerBusquedasAbandonadas(fila.id_cliente);
-    if (vencidos.length) console.log(`[Sesión] Búsquedas vencidas canceladas: #${vencidos.join(', #')}`);
-  } catch (err) {
-    console.warn('[Sesión] No se pudieron cancelar las búsquedas vencidas:', err);
   }
 
   // Sesión cerrada desde otra pestaña o token vencido

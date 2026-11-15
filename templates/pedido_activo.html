@@ -88,7 +88,7 @@
         <p id="avisoBusqueda"
           class="hidden flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold">
           <span aria-hidden="true">⏳</span>
-          <span>Mantené esta pantalla abierta mientras buscamos tu cadete.</span>
+          <span>Podés cerrar la app: seguimos buscando tu cadete y te avisamos.</span>
         </p>
 
         <button id="btnCancelarPedido" type="button"
@@ -196,11 +196,7 @@
 
   <script type="module">
     import { supabase } from '../scripts/conexion_supabase.js';
-    import {
-      ESTADOS_BUSQUEDA, iniciarBusquedaCadete, detenerBusqueda, obtenerBusquedaActiva, obtenerEstadoBusqueda,
-      obtenerMotivoCancelacion, solicitarRevisionDePedido, registrarRechazoCadete, cancelarBusquedaPorCliente,
-      suscribirMotorAsignacion
-    } from '../scripts/script_asignacion.js';
+    import { ESTADOS_BUSQUEDA, ESTADOS_OFERTA, textoBusqueda, cancelarBusquedaPorCliente } from '../scripts/busqueda_pedido.js';
     import { requerirCliente, buscarPedidoEnCurso, registrarLimpiezaAntesDeSalir } from '../scripts/sesion_cliente.js';
     import { rutaPorCalles } from '../scripts/direcciones.js';
     import { crearHistorialChat } from '../scripts/chat_pedido.js';
@@ -225,6 +221,11 @@
     let nombreCadete = 'Tu cadete';
     let estadoMostrado = null;
     let paginaCerrada = false;
+    // Mientras se busca cadete: cuenta regresiva en pantalla y relectura periódica del pedido
+    let relojBusqueda = null;
+    let ultimaRelecturaBusqueda = 0;
+    const RELECTURA_BUSQUEDA_MS = 5000;
+    const nombresCadetes = new Map(); // id_cad -> nombre (para "Ofreciendo a ...")
 
     let mapaSeguimiento = null;
     let puntosRuta = [];
@@ -241,26 +242,10 @@
 
     const $ = (id) => document.getElementById(id);
 
-    // El motor no toca el DOM: avisa por eventos y esta página decide qué mostrar
-    suscribirMotorAsignacion((evento) => {
-      if (!esPedidoEnPantalla(evento.idPedido)) return;
-      if (evento.tipo === 'pedido') {
-        aplicarCambioPedido(evento.pedido);
-      } else {
-        renderPedido(); // 'busqueda': nuevo texto del panel | 'finalizada': ocultar aviso
-      }
-    });
-
-    // Salir de la página pausa la búsqueda: se avisa antes y se liberan recursos al irse
-    window.addEventListener('beforeunload', (e) => {
-      if (obtenerBusquedaActiva()) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    });
+    // La búsqueda de cadete corre en el servidor: salir de la página no la pausa
     window.addEventListener('pagehide', liberarRecursos);
     window.addEventListener('pageshow', (e) => {
-      if (e.persisted) window.location.reload(); // restaurada desde bfcache: motor y canal ya se cerraron
+      if (e.persisted) window.location.reload(); // restaurada desde bfcache: el canal ya se cerró
     });
 
     iniciar();
@@ -373,32 +358,65 @@
       conectarCanalPrivadoPedido(pedido.id_pedido);
       renderPedido();
 
-      // Pedido nuevo o búsqueda que quedó a medias: arrancar o reanudar.
-      // Si quedó vieja, el motor la cancela en vez de ofrecerla.
-      if (ESTADOS_BUSQUEDA.includes(pedido.estado_pedido)) {
-        arrancarMotorAsignacion(pedido.id_pedido);
-      }
+      seguirBusqueda();
     }
 
-    function arrancarMotorAsignacion(idPedido) {
-      if (!('locks' in navigator)) {
-        iniciarBusquedaCadete(idPedido);
+    // -------------------------------------------------------------------------
+    // BÚSQUEDA DE CADETE (la hace el servidor; acá solo se muestra)
+    // -------------------------------------------------------------------------
+    // Mientras el pedido busca cadete: cada segundo se actualiza la cuenta regresiva y cada 5 s se relee
+    // el pedido, por si se perdió un cambio en tiempo real. Se detiene solo al salir de la búsqueda.
+    function seguirBusqueda() {
+      const buscando = Boolean(pedidoActivo) && ESTADOS_BUSQUEDA.includes(pedidoActivo.estado_pedido);
+      if (!buscando || paginaCerrada) {
+        clearInterval(relojBusqueda);
+        relojBusqueda = null;
         return;
       }
+      if (relojBusqueda) return;
 
-      // Si el pedido está abierto en varias pestañas, solo una corre el motor. Las demás esperan el
-      // bloqueo y lo toman si esa pestaña se cierra: nunca hay dos motores ofreciendo el mismo pedido.
-      navigator.locks.request(`td-asignacion-pedido-${idPedido}`, async () => {
-        if (paginaCerrada || !esPedidoEnPantalla(idPedido)) return;
-        if (!ESTADOS_BUSQUEDA.includes(pedidoActivo.estado_pedido)) return;
+      ultimaRelecturaBusqueda = Date.now();
+      relojBusqueda = setInterval(async () => {
+        if (!pedidoActivo || !ESTADOS_BUSQUEDA.includes(pedidoActivo.estado_pedido)) {
+          seguirBusqueda();
+          return;
+        }
+        renderTextoBusqueda();
 
-        const b = iniciarBusquedaCadete(idPedido);
-        renderPedido();
-        await b.terminada;
-      }).catch((err) => {
-        console.warn('[Asignación] Web Locks no disponible, se inicia sin bloqueo entre pestañas:', err);
-        if (!paginaCerrada && !obtenerBusquedaActiva()) iniciarBusquedaCadete(idPedido);
-      });
+        if (Date.now() - ultimaRelecturaBusqueda < RELECTURA_BUSQUEDA_MS) return;
+        ultimaRelecturaBusqueda = Date.now();
+        try {
+          const actualizado = await leerPedido(pedidoActivo.id_pedido);
+          if (actualizado && !paginaCerrada) aplicarCambioPedido(actualizado);
+        } catch (err) {
+          console.warn('[Seguimiento] No se pudo releer el pedido, se reintenta:', err);
+        }
+      }, 1000);
+    }
+
+    // Solo el texto del panel (lo usa el reloj): no vuelve a pintar el resto de la pantalla
+    function renderTextoBusqueda() {
+      if (!pedidoActivo || !ESTADOS_BUSQUEDA.includes(pedidoActivo.estado_pedido)) return;
+      const ui = textoBusqueda(pedidoActivo, nombreCadeteOfertado(pedidoActivo));
+      if ($('tituloEstado').textContent !== ui.titulo) $('tituloEstado').textContent = ui.titulo;
+      if ($('detalleEstado').textContent !== ui.detalle) $('detalleEstado').textContent = ui.detalle;
+    }
+
+    // Nombre del cadete al que se le está ofreciendo el pedido; se busca una vez y queda en memoria
+    function nombreCadeteOfertado(pedido) {
+      if (pedido.id_cadete == null || !ESTADOS_OFERTA.includes(pedido.estado_pedido)) return '';
+      const id = Number(pedido.id_cadete);
+      if (nombresCadetes.has(id)) return nombresCadetes.get(id);
+
+      nombresCadetes.set(id, ''); // evita consultas repetidas mientras llega la respuesta
+      supabase.from('Cadetes').select('nombre_cad, alias_cad').eq('id_cad', id).maybeSingle()
+        .then(({ data }) => {
+          const nombre = data?.nombre_cad || data?.alias_cad || '';
+          if (!nombre) return;
+          nombresCadetes.set(id, nombre);
+          renderTextoBusqueda();
+        }, () => nombresCadetes.delete(id));
+      return '';
     }
 
     function aplicarCambioPedido(fila) {
@@ -411,6 +429,7 @@
 
       pedidoActivo = { ...pedidoActivo, ...fila };
       renderPedido();
+      seguirBusqueda();
     }
 
     function renderPedido() {
@@ -432,7 +451,7 @@
       if (estado === 'cancelado') {
         vista = {
           icono: '❌', clases: 'bg-red-500/15', titulo: 'Pedido cancelado',
-          detalle: obtenerMotivoCancelacion(pedidoActivo.id_pedido) || 'Podés volver a pedir el envío cuando quieras'
+          detalle: pedidoActivo.motivo_cancelacion || 'Podés volver a pedir el envío cuando quieras'
         };
       } else if (estado === 'entregado' || estado === 'rendido') {
         vista = {
@@ -440,12 +459,9 @@
           detalle: pedidoActivo.tiempo_pedido ? `Viaje de ${pedidoActivo.tiempo_pedido} min · ¡Gracias por usar Todo Delivery!` : '¡Gracias por usar Todo Delivery!'
         };
       } else if (enBusqueda || !idCadete) {
-        // Detalle del motor de asignación (a quién se le está ofreciendo, cuánto falta, etc.)
-        const ui = obtenerEstadoBusqueda(pedidoActivo.id_pedido);
-        vista = {
-          icono: '🔍', clases: 'bg-brand-warning/15 radar', titulo: ui?.titulo || 'Buscando cadete',
-          detalle: ui?.detalle || 'Estamos ofreciendo tu pedido a los cadetes disponibles'
-        };
+        // Detalle de la búsqueda (a quién se le está ofreciendo, cuánto falta, etc.)
+        const ui = textoBusqueda(pedidoActivo, nombreCadeteOfertado(pedidoActivo));
+        vista = { icono: '🔍', clases: 'bg-brand-warning/15 radar', titulo: ui.titulo, detalle: ui.detalle };
       } else if (estado === 'asignado') {
         vista = { icono: '🛵', clases: 'bg-blue-500/15', titulo: 'Tu cadete va a retirar el pedido', detalle: 'Te avisamos cuando salga hacia la entrega' };
       } else if (estado === 'en_camino_entrega') {
@@ -461,7 +477,7 @@
       $('detalleEstado').textContent = vista.detalle;
 
       renderPasos(estado);
-      $('avisoBusqueda').classList.toggle('hidden', !(enBusqueda && obtenerBusquedaActiva()));
+      $('avisoBusqueda').classList.toggle('hidden', !enBusqueda);
       $('btnCancelarPedido').classList.toggle('hidden', !enBusqueda);
       $('accionesFinales').classList.toggle('hidden', !finalizado);
       $('tarjetaCadete').classList.toggle('hidden', !conCadete);
@@ -523,7 +539,7 @@
       } else if (estado === 'entregado' || estado === 'rendido') {
         mostrarToast('¡Pedido entregado!', { tipo: 'exito', icono: '✅' });
       } else if (estado === 'cancelado') {
-        mostrarToast(obtenerMotivoCancelacion(pedidoActivo.id_pedido) || 'El pedido se canceló', { tipo: 'error', icono: '❌' });
+        mostrarToast(pedidoActivo.motivo_cancelacion || 'El pedido se canceló', { tipo: 'error', icono: '❌' });
       }
     }
 
@@ -554,10 +570,6 @@
       } catch (err) {
         console.error('Error al cancelar el pedido:', err);
         mostrarToast('No pudimos cancelar el pedido. Probá de nuevo.', { tipo: 'error' });
-        // La búsqueda local se detuvo antes de escribir: si el pedido sigue buscando, retomarla
-        if (ESTADOS_BUSQUEDA.includes(pedidoActivo.estado_pedido) && !obtenerBusquedaActiva()) {
-          arrancarMotorAsignacion(idPedido);
-        }
       } finally {
         btn.disabled = false;
         btn.textContent = 'Cancelar pedido';
@@ -769,14 +781,9 @@
             ...(payload.id_cadete != null ? { id_cadete: payload.id_cadete } : {})
           });
           if (payload.patente && tieneCadeteAsignado()) actualizarInsigniaPatente(payload.patente);
-          solicitarRevisionDePedido(idPedido);
         })
-        // E) Rechazo del cadete: se registra y el motor decide con datos frescos de BD
-        .on('broadcast', { event: 'pedido_rechazado' }, ({ payload }) => {
-          if (payload?.id_cadete_rechazo == null) return;
-          registrarRechazoCadete(idPedido, payload.id_cadete_rechazo);
-        })
-        // F) Cambios directos en BD
+        // E) Cambios en la BD: así llega todo lo que decide el asignador del servidor (ofertas, rechazos,
+        //    esperas, cancelaciones) y lo que escribe el cadete
         .on(
           'postgres_changes',
           {
@@ -790,8 +797,6 @@
             aplicarCambioPedido(payload.new);
             // Mensajes guardados por el cadete que no llegaron en vivo
             chat?.fusionar(payload.new.Chat_pedido);
-            // Cualquier cambio (rechazo, aceptación, cancelación) se evalúa en el motor releyendo la BD
-            solicitarRevisionDePedido(idPedido);
           }
         )
         .subscribe((status) => {
@@ -989,8 +994,8 @@
     function liberarRecursos() {
       paginaCerrada = true;
       detenerRelojGps();
-      const b = obtenerBusquedaActiva();
-      if (b) detenerBusqueda(b, 'se cerró el seguimiento');
+      clearInterval(relojBusqueda);
+      relojBusqueda = null;
       chat?.cerrar();
       if (channelPedidoPrivado) {
         supabase.removeChannel(channelPedidoPrivado);
