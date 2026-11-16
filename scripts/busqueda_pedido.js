@@ -11,17 +11,18 @@
 //                                           que se libere un cadete: espera_desde tiene la hora)
 //   'libre'           + id_cadete = X    -> ofrecido a X, todavía no abrió la oferta (vence en oferta_vence_en)
 //   'en_confirmacion' + id_cadete = X    -> X tiene el modal abierto
+//   'en_cola'         + id_cadete = X    -> X lo aceptó para hacerlo apenas termine el viaje que tiene en curso
 // Fin de la búsqueda:
 //   'asignado'        + id_cadete = X    -> X aceptó
 //   'cancelado'                          -> motivo_cancelacion dice por qué
 import { supabase } from './conexion_supabase.js';
 
-export const ESTADOS_BUSQUEDA = ['pendiente', 'libre', 'en_confirmacion'];
+export const ESTADOS_BUSQUEDA = ['pendiente', 'libre', 'en_confirmacion', 'en_cola'];
 export const ESTADOS_OFERTA = ['libre', 'en_confirmacion'];
 
 // Los mismos plazos que usa el asignador del servidor (acá solo para mostrar las cuentas regresivas)
 const TIMEOUT_OFERTA_S = 20;
-const ESPERA_MAX_OCUPADOS_S = 60;
+const ESPERA_MAX_OCUPADOS_S = 15 * 60;
 const VENCIMIENTO_BUSQUEDA_MS = 30 * 60 * 1000;
 
 /**
@@ -29,7 +30,8 @@ const VENCIMIENTO_BUSQUEDA_MS = 30 * 60 * 1000;
  * esto cubre el instante previo (o un servidor demorado) para no mostrarlo como "buscando".
  */
 export function esBusquedaVencida(pedido) {
-  if (!pedido || !ESTADOS_BUSQUEDA.includes(pedido.estado_pedido)) return false;
+  // En la cola de un cadete no vence por antigüedad: tiene su propio plazo de 15 minutos en el servidor
+  if (!pedido || !ESTADOS_BUSQUEDA.includes(pedido.estado_pedido) || pedido.estado_pedido === 'en_cola') return false;
   const creado = new Date(pedido.fecha_pedido).getTime();
   return Number.isFinite(creado) && Date.now() - creado > VENCIMIENTO_BUSQUEDA_MS;
 }
@@ -52,6 +54,13 @@ export async function cancelarBusquedaPorCliente(idPedido) {
  * @returns {{ titulo: string, detalle: string }}
  */
 export function textoBusqueda(pedido, nombreCadete = '') {
+  if (pedido?.estado_pedido === 'en_cola') {
+    return {
+      titulo: `${nombreCadete || 'Tu cadete'} está terminando otra entrega`,
+      detalle: 'Sos el siguiente: va a retirar tu pedido apenas termine'
+    };
+  }
+
   if (ESTADOS_OFERTA.includes(pedido?.estado_pedido) && pedido.id_cadete != null) {
     const accion = pedido.estado_pedido === 'en_confirmacion' ? 'Viendo la oferta' : 'Enviando oferta';
     const restante = segundosHasta(pedido.oferta_vence_en, TIMEOUT_OFERTA_S);
@@ -65,9 +74,12 @@ export function textoBusqueda(pedido, nombreCadete = '') {
     const desde = new Date(pedido.espera_desde).getTime();
     const hasta = Number.isFinite(desde) ? new Date(desde + ESPERA_MAX_OCUPADOS_S * 1000).toISOString() : null;
     const restante = segundosHasta(hasta, ESPERA_MAX_OCUPADOS_S);
+    const minutos = Math.ceil(restante / 60);
     return {
       titulo: 'Todos los cadetes están ocupados',
-      detalle: restante > 0 ? `Esperando que se libere uno • ${restante}s` : 'Esperando que se libere uno'
+      detalle: restante > 0
+        ? `Te asignamos uno apenas se libere • esperamos hasta ${minutos} min más`
+        : 'Te asignamos uno apenas se libere'
     };
   }
 

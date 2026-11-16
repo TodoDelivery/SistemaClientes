@@ -88,7 +88,7 @@
         <p id="avisoBusqueda"
           class="hidden flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold">
           <span aria-hidden="true">⏳</span>
-          <span>Podés cerrar la app: seguimos buscando tu cadete y te avisamos.</span>
+          <span>Podés cerrar la app: seguimos con tu pedido y te avisamos.</span>
         </p>
 
         <button id="btnCancelarPedido" type="button"
@@ -210,7 +210,7 @@
     const ESTADOS_CHAT = ['asignado', 'en_camino_entrega'];
     const ESTADOS_FINALES = ['entregado', 'rendido', 'cancelado'];
     // Orden en que avanza un pedido: un evento atrasado no puede volver a mostrar una etapa anterior
-    const ETAPA_ESTADO = { pendiente: 0, libre: 0, en_confirmacion: 0, asignado: 1, en_camino_entrega: 2, entregado: 3, rendido: 4, cancelado: 5 };
+    const ETAPA_ESTADO = { pendiente: 0, libre: 0, en_confirmacion: 0, en_cola: 0, asignado: 1, en_camino_entrega: 2, entregado: 3, rendido: 4, cancelado: 5 };
     const PASOS = ['Buscando', 'Asignado', 'En camino', 'Entregado'];
     const RESPUESTAS_RAPIDAS = ['Ya salgo', 'Estoy esperando afuera', '¿Cuánto falta?', 'Tocá el timbre'];
 
@@ -404,7 +404,7 @@
 
     // Nombre del cadete al que se le está ofreciendo el pedido; se busca una vez y queda en memoria
     function nombreCadeteOfertado(pedido) {
-      if (pedido.id_cadete == null || !ESTADOS_OFERTA.includes(pedido.estado_pedido)) return '';
+      if (pedido.id_cadete == null || !(ESTADOS_OFERTA.includes(pedido.estado_pedido) || pedido.estado_pedido === 'en_cola')) return '';
       const id = Number(pedido.id_cadete);
       if (nombresCadetes.has(id)) return nombresCadetes.get(id);
 
@@ -549,7 +549,7 @@
 
       const confirmado = await confirmar({
         titulo: '¿Cancelar el pedido?',
-        mensaje: 'Dejamos de buscar cadete y el pedido queda cancelado.',
+        mensaje: 'Dejamos de buscar cadete (o lo sacamos de su cola) y el pedido queda cancelado.',
         textoConfirmar: 'Sí, cancelar pedido',
         textoCancelar: 'No, seguir buscando',
         peligro: true

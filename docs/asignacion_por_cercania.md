@@ -55,9 +55,31 @@ flowchart TD
    - Rechaza (`cadete_rechazar_pedido`) → en la misma llamada se ofrece al siguiente.
    - No responde → el latido (`asignador.tick`, cada 3 s) vence la oferta, le manda `pedido_retirado` para
      cerrarle el modal y ofrece al siguiente.
-7. **Si no queda nadie libre**: si hay ocupados que todavía no lo vieron, espera hasta 60 s (`espera_desde`);
+7. **Si no queda nadie libre**: primero intenta **encolarlo** a un cadete en viaje (ver "La cola por cadete").
+   Si tampoco se puede y hay ocupados que todavía pueden tomarlo, espera hasta 15 min (`espera_desde`);
    si no, cancela con el motivo: "No hay cadetes conectados", "Todos los cadetes rechazaron el pedido" o
    "Ningún cadete se liberó a tiempo".
+
+---
+
+## La cola por cadete
+
+Cuando no hay ningún cadete libre, el pedido no espera a ciegas: se le ofrece a un cadete que está en viaje, para
+que lo haga apenas termine (`supabase/migrations/20261116090000_cola_por_cadete.sql`).
+
+- **A quién:** al cadete en viaje que va a quedar más cerca. La distancia se mide **desde el destino de su viaje
+  actual** (`latitud_dest`, `longitud_dest` del pedido que lleva) **hasta el retiro del pedido nuevo**. No importa
+  dónde está parado ahora, sino dónde va a entregar.
+- **Quién es encolable:** en turno, con un viaje (`asignado` o `en_camino_entrega`), sin una oferta abierta, sin
+  otro pedido en cola y al que este pedido nunca se le ofreció.
+- **La oferta es igual a las demás** (20 s, `ofertas_pedido.para_cola = true`). En la app del cadete aparece como
+  "Siguiente pedido" durante el viaje (`Scripts/cola_cadete.js`).
+- **Si acepta:** el pedido pasa a `en_cola` a su nombre. Al entregar el viaje, pasa solo a `asignado`.
+- **Si rechaza o no responde:** se prueba con el siguiente cadete en viaje. El rechazo de una oferta de cola no lo
+  descarta: cuando quede libre, el pedido se le puede ofrecer normalmente.
+- **Un cadete libre siempre va antes** que encolar.
+- **15 minutos en cola como máximo:** si el cadete no terminó su viaje, el pedido vuelve a la búsqueda.
+- El cliente puede cancelar mientras está en cola.
 
 ---
 
@@ -129,7 +151,7 @@ la base: no se pierde si el cliente recarga o cierra la app.
 |---|---|
 | Cadete sin permiso de GPS o sin señal de GPS todavía | Recibe ofertas igual, pero después de los que tienen ubicación |
 | Cadete que cerró la app sin "Finalizar Turno" | A los 75 s sin señal se descarta: no cuenta ni como libre ni como ocupado |
-| Ningún cadete libre, pero hay ocupados en turno | El pedido espera hasta 60 s; apenas uno se libera (a lo sumo 3 s después) recibe la oferta |
+| Ningún cadete libre, pero hay cadetes en viaje | Se le ofrece a uno para su cola. Si nadie lo encola, espera hasta 15 min; apenas uno se libera (a lo sumo 3 s después) recibe la oferta |
 | Nadie en turno | Se cancela al instante: "No hay cadetes conectados" |
 | Varios pedidos al mismo tiempo | Las decisiones pasan de a una (bloqueo en la base): el segundo pedido ve que el cadete más cercano ya tiene una oferta y va al siguiente. Un cadete nunca tiene dos ofertas a la vez |
 | El cadete acepta justo cuando vence la oferta | Gana el que llega primero a la base; el otro ve "ya no está disponible" o el modal cerrado |
@@ -148,11 +170,12 @@ hay que hacer una migración nueva que reemplace la función:
 | Ofertas sin aceptar antes de ignorar la distancia | `3` | `asignador.ofrecer_siguiente` |
 | Tiempo para que el cadete responda | 20 s | `asignador.ofrecer_siguiente` y `asignador.revisar`. Tiene que ser **mayor** que el modal del cadete (15 s) |
 | Latido del servidor | 3 s | pg_cron, tarea `asignador-tick` |
-| Espera a que se libere un cadete ocupado | 60 s | `asignador.ofrecer_siguiente` |
+| Espera a que se libere un cadete (nadie libre ni encolable) | 15 min | `asignador.ofrecer_siguiente` |
+| Tiempo máximo en la cola de un cadete | 15 min | `asignador.revisar` |
 | Vencimiento de una búsqueda | 30 min | `asignador.revisar` |
 | Señal del cadete: cada cuánto / tolerancia | 15 s / 75 s | `Scripts/latido_cadete.js` / `asignador.ofrecer_siguiente` |
 
-La app de clientes repite 20 s, 60 s y 30 min en `scripts/busqueda_pedido.js`, solo para mostrar las cuentas
+La app de clientes repite 20 s, 15 min y 30 min en `scripts/busqueda_pedido.js`, solo para mostrar las cuentas
 regresivas: si se cambian en el servidor, cambiarlos también ahí.
 
 ---
@@ -165,7 +188,8 @@ La app de clientes no decide nada: arma el texto con `textoBusqueda(pedido)` a p
 |---|---|---|
 | Oferta enviada (`libre`) | Ofreciendo a {nombre} | Enviando oferta • 18s |
 | El cadete la está viendo (`en_confirmacion`) | Ofreciendo a {nombre} | Viendo la oferta • 12s |
-| Todos ocupados (`pendiente` con `espera_desde`) | Todos los cadetes están ocupados | Esperando que se libere uno • 45s |
+| Todos ocupados (`pendiente` con `espera_desde`) | Todos los cadetes están ocupados | Te asignamos uno apenas se libere • esperamos hasta 12 min más |
+| En la cola de un cadete (`en_cola`) | {nombre} está terminando otra entrega | Sos el siguiente: va a retirar tu pedido apenas termine |
 | Entre ofertas | Buscando cadete | Estamos ofreciendo tu pedido a los cadetes disponibles |
 
 El cliente ya no ve la distancia del cadete ni el número de intento: esos datos quedan en `ofertas_pedido`.
@@ -239,8 +263,8 @@ where start_time > now() - interval '5 minutes' group by status;
 
 - **Distancia en línea recta**, no por calles: un cadete del otro lado de una avenida sin cruce puede "ganar"
   aunque tarde más.
-- **Si no hay cadetes libres, el pedido espera 60 s y se cancela.** Falta la cola de pedidos (sección 14.2 del
-  contrato).
+- **La cola es de un solo pedido por cadete.** Con más pedidos que cadetes, los que no entran en ninguna cola
+  esperan hasta 15 minutos y se cancelan.
 - **Los cadetes no inician sesión en Supabase**: las funciones `cadete_*` confían en el `id_cad` que manda la
   app. Va junto con el pendiente de seguridad de las tablas.
 - **Dos viajes a la vez**: el servidor no le ofrece pedidos a un cadete con viaje y `cadete_aceptar_pedido` lo

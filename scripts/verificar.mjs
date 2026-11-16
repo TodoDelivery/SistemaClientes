@@ -159,7 +159,7 @@ for (const archivo of archivos) {
 const CONTRATO = [
   "`pedido-en-curso-${", "'cambio_estado_pedido'",
   "'ubicacion_cadete'", "'cadete_conectado'", "'mensaje_chat'", "'Chat_pedido'", "id_mensaje",
-  "'pendiente'", "'libre'", "'en_confirmacion'", "'asignado'", "'en_camino_entrega'", "'entregado'", "'rendido'", "'cancelado'",
+  "'pendiente'", "'libre'", "'en_confirmacion'", "'en_cola'", "'asignado'", "'en_camino_entrega'", "'entregado'", "'rendido'", "'cancelado'",
   "remitente: 'cliente'",
   // Asignador del servidor (supabase/migrations/20261115100000_asignador_en_servidor.sql)
   "'cancelar_pedido_cliente'", "motivo_cancelacion", "oferta_vence_en", "espera_desde"

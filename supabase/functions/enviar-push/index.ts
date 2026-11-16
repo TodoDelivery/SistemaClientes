@@ -14,9 +14,10 @@ const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPAB
 
 const URL_CADETES = '/Templates/';
 const URL_CLIENTES = '/templates/';
-const SEGUNDOS_OFERTA = 20;            // lo que dura una oferta antes de que el motor la retire
+const SEGUNDOS_OFERTA = 20;            // lo que dura una oferta antes de que el asignador la retire
 const UNA_HORA = 3600;
-const ESTADOS_BUSQUEDA = ['pendiente', 'libre', 'en_confirmacion'];
+const ESTADOS_BUSQUEDA = ['pendiente', 'libre', 'en_confirmacion', 'en_cola'];
+const ESTADOS_VIAJE = ['asignado', 'en_camino_entrega'];
 const ESTADOS_CHAT = ['asignado', 'en_camino_entrega'];
 
 type Fila = Record<string, any>;
@@ -75,6 +76,13 @@ async function nombreCadete(idCadete: number | null) {
   return data?.nombre_cad || data?.alias_cad || 'Tu cadete';
 }
 
+/** true si el cadete tiene un viaje en curso: una oferta nueva es para su cola (la hace al terminar) */
+async function cadeteEnViaje(idCadete: number, idPedidoOfrecido: number) {
+  const { data } = await supabase.from('Pedidos').select('id_pedido')
+    .eq('id_cadete', idCadete).in('estado_pedido', ESTADOS_VIAJE).neq('id_pedido', idPedidoOfrecido).limit(1);
+  return Boolean(data && data.length);
+}
+
 async function gananciaCadete(p: Fila) {
   let porcentaje = Number(p.porc_comision);
   if (!Number.isFinite(porcentaje)) {
@@ -98,10 +106,12 @@ async function avisosDelCambio(viejo: Fila, nuevo: Fila): Promise<Aviso[]> {
   if (nuevo.estado_pedido === 'libre' && idCadete && (cambioEstado || viejo.id_cadete !== nuevo.id_cadete)) {
     const km = kmDelViaje(nuevo);
     const detalle = [nuevo.tipo_paquete, km ? `${String(km).replace('.', ',')} km de viaje` : null].filter(Boolean).join(' · ');
+    // Con un viaje en curso la oferta es para la cola del cadete: lo hace apenas termine
+    const paraCola = await cadeteEnViaje(idCadete, Number(id));
     avisos.push({
       destino: { id_cad: idCadete },
-      titulo: `Nuevo pedido · Ganás ${pesos(await gananciaCadete(nuevo))}`,
-      texto: `${detalle ? `${detalle}. ` : ''}Tocá para verlo, tenés ${SEGUNDOS_OFERTA} s`,
+      titulo: `${paraCola ? 'Siguiente pedido' : 'Nuevo pedido'} · Ganás ${pesos(await gananciaCadete(nuevo))}`,
+      texto: `${detalle ? `${detalle}. ` : ''}${paraCola ? 'Para cuando termines este viaje. ' : ''}Tocá para verlo, tenés ${SEGUNDOS_OFERTA} s`,
       url: pantallaCadete('dashboard.html'),
       tag: `oferta-${id}`,
       ttl: SEGUNDOS_OFERTA
@@ -120,11 +130,27 @@ async function avisosDelCambio(viejo: Fila, nuevo: Fila): Promise<Aviso[]> {
     });
   }
 
+  // ---- Cadete: terminó su viaje y el pedido que tenía en cola pasó a ser su viaje ----
+  if (cambioEstado && viejo.estado_pedido === 'en_cola' && nuevo.estado_pedido === 'asignado' && idCadete) {
+    avisos.push({
+      destino: { id_cad: idCadete },
+      titulo: `Tu siguiente pedido ya empezó · #${id}`,
+      texto: 'Era el que tenías en cola. Tocá para ir a retirarlo.',
+      url: pantallaCadete('dashboard.html'),
+      tag: `oferta-${id}`,
+      ttl: UNA_HORA
+    });
+  }
+
   // ---- Cliente: avances del pedido ----
   if (cambioEstado && nuevo.id_cliente) {
     const cliente = { id_cliente: String(nuevo.id_cliente) };
     const base = { destino: cliente, url: pantallaCliente(), tag: `pedido-${id}`, ttl: UNA_HORA };
-    if (nuevo.estado_pedido === 'asignado') {
+    if (nuevo.estado_pedido === 'en_cola') {
+      avisos.push({ ...base, titulo: '¡Ya tenés cadete!', texto: `${await nombreCadete(idCadete)} está terminando otra entrega y sigue con la tuya.` });
+    } else if (nuevo.estado_pedido === 'asignado' && viejo.estado_pedido === 'en_cola') {
+      avisos.push({ ...base, titulo: 'Tu cadete ya va a retirar tu pedido', texto: `${await nombreCadete(idCadete)} terminó la entrega anterior.` });
+    } else if (nuevo.estado_pedido === 'asignado') {
       avisos.push({ ...base, titulo: '¡Ya tenés cadete!', texto: `${await nombreCadete(idCadete)} va a retirar tu pedido.` });
     } else if (nuevo.estado_pedido === 'en_camino_entrega') {
       avisos.push({ ...base, titulo: 'Tu pedido va en camino', texto: `${await nombreCadete(idCadete)} ya retiró el paquete y va a tu dirección.` });

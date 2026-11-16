@@ -25,6 +25,7 @@ const ESTADOS_UI = {
   pendiente: { texto: 'Buscando cadete', clases: CHIP_BUSCANDO },
   libre: { texto: 'Buscando cadete', clases: CHIP_BUSCANDO },
   en_confirmacion: { texto: 'Confirmando cadete', clases: CHIP_BUSCANDO },
+  en_cola: { texto: 'Sos el siguiente', clases: CHIP_BUSCANDO },
   asignado: { texto: 'Cadete asignado', clases: 'bg-blue-50 text-blue-700 border border-blue-200/80' },
   en_camino_entrega: { texto: 'En camino', clases: 'bg-orange-50 text-brand-accent border border-orange-200/80' },
   entregado: { texto: 'Entregado', clases: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80' },

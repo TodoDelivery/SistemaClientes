@@ -93,13 +93,14 @@ cadete en turno. La escribe `cadete_latido()` y la lee solo el asignador; las ap
 | `pendiente`        | null      | Sin oferta vigente (recién creado, entre ofertas o esperando que se libere un cadete) | Cliente (al crear) / Servidor |
 | `libre`            | X         | Ofrecido al cadete X, todavía no abrió la oferta       | Servidor              |
 | `en_confirmacion`  | X         | El cadete X tiene el modal de la oferta abierto        | Cadete (`cadete_ver_oferta`) |
-| `asignado`         | X         | X aceptó; va a retirar el pedido                       | Cadete (`cadete_aceptar_pedido`) |
+| `en_cola`          | X         | X está en viaje con otro pedido y aceptó hacer este apenas termine | Cadete (`cadete_aceptar_pedido`) |
+| `asignado`         | X         | X aceptó (o terminó el viaje anterior y este salió de su cola); va a retirar el pedido | Cadete (`cadete_aceptar_pedido`) / Servidor |
 | `en_camino_entrega`| X         | X retiró el paquete y va al destino                    | Cadete                |
 | `entregado`        | X         | Entregado (con `tiempo_pedido`)                        | Cadete                |
 | `rendido`          | X         | La administradora cobró el efectivo (con `id_rendicion`) | Admin (`rendir_caja`) |
 | `cancelado`        | null o X  | Ver `motivo_cancelacion`: sin cadetes, todos rechazaron, nadie se liberó, venció o lo canceló el cliente | Servidor / Cliente (`cancelar_pedido_cliente`) |
 
-Los tres primeros son la **fase de búsqueda**: `ESTADOS_BUSQUEDA = ['pendiente', 'libre', 'en_confirmacion']`.
+Los cuatro primeros son la **fase de búsqueda**: `ESTADOS_BUSQUEDA = ['pendiente', 'libre', 'en_confirmacion', 'en_cola']`.
 Una **oferta vigente** es `estado_pedido IN ('libre','en_confirmacion') AND id_cadete IS NOT NULL`.
 
 ### Estados de `Cadetes.estado_cad` (los escribe la app de cadetes)
@@ -205,6 +206,12 @@ pedido y **solo mira** cómo avanza; puede cerrarse y la búsqueda sigue.
 - **Solo el servidor mueve `estado_pedido` e `id_cadete` durante la búsqueda.** El trigger `asignador_guardia`
   rechaza cualquier `UPDATE` directo de las apps sobre un pedido en `pendiente` / `libre` / `en_confirmacion`
   (y cualquier intento de volver un pedido a esos estados). Las apps usan las funciones de 7.4.
+- **Cola por cadete** (`20261116090000_cola_por_cadete.sql`): si no hay ningún cadete libre, el pedido se le
+  ofrece a un cadete **en viaje**, para que lo haga apenas termine. Se elige al que va a quedar más cerca: aquel
+  cuyo **destino actual** está más cerca del **retiro** del pedido nuevo. Si acepta, el pedido queda `en_cola` a su
+  nombre (un solo pedido en cola por cadete) y pasa solo a `asignado` cuando entrega el viaje. Si en 15 minutos
+  no lo terminó, el pedido vuelve a la búsqueda. Rechazar una oferta de cola no descarta al cadete: cuando quede
+  libre se le puede ofrecer el pedido normalmente.
 - El cadete NUNCA toma pedidos por su cuenta.
 
 ### 7.2 Plazos
@@ -213,7 +220,8 @@ pedido y **solo mira** cómo avanza; puede cerrarse y la búsqueda sigue.
 |------------------------------------------------------------|--------|
 | Tiempo del cadete para responder una oferta                | 20 s (su modal dura 15 s; el resto es margen de red) |
 | Latido del servidor (pg_cron `asignador-tick`)             | 3 s    |
-| Espera máxima a que se libere un cadete ocupado            | 60 s   |
+| Espera máxima a que se libere un cadete (nadie libre ni encolable) | 15 min |
+| Tiempo máximo de un pedido en la cola de un cadete         | 15 min (después vuelve a la búsqueda) |
 | Vencimiento de una búsqueda (desde `Pedidos.creado_en`)    | 30 min |
 | Ofertas por cercanía sin aceptar antes de ignorar la distancia | 3  |
 | Señal del cadete (`cadete_latido`)                         | cada 15 s; sin señal por 75 s = desconectado |
@@ -228,9 +236,14 @@ pedido y **solo mira** cómo avanza; puede cerrarse y la búsqueda sigue.
    - **acepta** (`cadete_aceptar_pedido`) → `asignado`; fin de la búsqueda;
    - **rechaza** (`cadete_rechazar_pedido`) → `pendiente` sin cadete y en la misma llamada se ofrece al siguiente;
    - **no responde** → el latido vence la oferta, manda `pedido_retirado` a `pedidos-cadete-{X}` y ofrece al siguiente.
-4. **Nadie libre, pero hay ocupados que todavía no lo vieron**: el pedido queda en `pendiente` con
-   `espera_desde` y se reintenta en cada latido, hasta 60 s.
-5. **No queda nadie**: `cancelado` con `motivo_cancelacion`:
+4. **Nadie libre, pero hay un cadete en viaje sin pedido en cola**: se le hace una **oferta de cola**
+   (`ofertas_pedido.para_cola = true`; el broadcast `nuevo_pedido` lleva `para_cola: true`). Si acepta, el pedido
+   pasa a `en_cola` con `id_cadete = X` y `espera_desde = ahora`. Cuando X entrega su viaje, el trigger
+   `asignador_al_terminar_viaje` lo pasa a `asignado` y le manda el broadcast `pedido_en_cola_asignado`.
+   Si X no termina en 15 min, vuelve a `pendiente` y se sigue buscando.
+5. **Nadie libre ni encolable, pero hay ocupados que todavía pueden tomarlo**: el pedido queda en `pendiente`
+   con `espera_desde` y se reintenta en cada latido, hasta 15 min.
+6. **No queda nadie**: `cancelado` con `motivo_cancelacion`:
    `No hay cadetes conectados` / `Todos los cadetes rechazaron el pedido` / `Ningún cadete se liberó a tiempo` /
    `La búsqueda de cadete venció` / `Cancelado por el cliente`.
 
@@ -244,9 +257,9 @@ cadete reciba la cancelación por `postgres_changes` (su filtro es `id_cadete=eq
 |---|---|---|
 | `cadete_latido(p_id_cad, p_lat, p_lng, p_gps_ms)` | cadete | Señal de vida y última ubicación. `p_gps_ms` = hora (ms) del último fix GPS real; `null` si todavía no hay GPS (no se usa para medir distancias). Se guarda en `cadetes_senal`, que las apps no pueden leer. |
 | `cadete_ver_oferta(p_id_pedido, p_id_cad)` → boolean | cadete | Marca `en_confirmacion`. `false` = la oferta ya no es suya: cerrar el modal. |
-| `cadete_aceptar_pedido(p_id_pedido, p_id_cad)` → json | cadete | `{ ok: true, pedido }`, o `{ ok: false, motivo: 'no_vigente' }`, o `{ ok: false, motivo: 'viaje_en_curso', id_pedido_en_curso }` (nunca dos viajes: la oferta se devuelve sola). |
+| `cadete_aceptar_pedido(p_id_pedido, p_id_cad)` → json | cadete | `{ ok: true, pedido }` (es su viaje), o `{ ok: true, en_cola: true, pedido, id_pedido_en_curso }` (quedó en su cola), o `{ ok: false, motivo: 'no_vigente' }`, o `{ ok: false, motivo: 'viaje_en_curso', id_pedido_en_curso }` (oferta normal con un viaje en curso: nunca dos viajes, se devuelve sola). |
 | `cadete_rechazar_pedido(p_id_pedido, p_id_cad)` → boolean | cadete | Devuelve la oferta y la pasa al siguiente. `false` = ya no era suya. |
-| `cancelar_pedido_cliente(p_id_pedido)` → boolean | cliente (con sesión) | Cancela un pedido propio en búsqueda. `false` = ya salió de la búsqueda o no es suyo. |
+| `cancelar_pedido_cliente(p_id_pedido)` → boolean | cliente (con sesión) | Cancela un pedido propio en búsqueda o en la cola de un cadete. `false` = ya salió de la búsqueda o no es suyo. |
 
 ### 7.5 Qué hace la app de clientes
 
@@ -255,7 +268,9 @@ cadete reciba la cancelación por `postgres_changes` (su filtro es `id_cadete=eq
 - `pedido_activo.html` escucha `postgres_changes` del pedido y, mientras busca cadete, actualiza la cuenta
   regresiva cada segundo y relee el pedido cada 5 s por si se perdió un evento.
 - Panel durante la búsqueda: "Ofreciendo a {nombre}" / "Enviando oferta • {seg}s" o "Viendo la oferta • {seg}s";
-  "Todos los cadetes están ocupados" / "Esperando que se libere uno • {seg}s"; si no, "Buscando cadete".
+  "Todos los cadetes están ocupados" / "Te asignamos uno apenas se libere • esperamos hasta {min} min más";
+  en cola, "{nombre} está terminando otra entrega" / "Sos el siguiente: va a retirar tu pedido apenas termine";
+  si no, "Buscando cadete". En cola el cliente puede seguir cancelando.
 - El cliente ya **no escucha** `cadetes-disponibles`: no ve la ubicación de los cadetes.
 
 ### 7.6 Qué hace la app de cadetes
@@ -265,6 +280,10 @@ cadete reciba la cancelación por `postgres_changes` (su filtro es `id_cadete=eq
 - Las ofertas le llegan por los caminos de siempre: `postgres_changes` de `Pedidos` filtrado por
   `id_cadete`, el broadcast `nuevo_pedido` en `pedidos-cadete-{id}` y el verificador que consulta la BD cada 3 s.
 - Ver, aceptar y rechazar pasan por las funciones de 7.4 (`Templates/dashboard.html`).
+- `Scripts/cola_cadete.js` (dashboard y pantalla del viaje): consulta la BD cada 3 s; si el cadete tiene un viaje
+  y además una oferta abierta, muestra la hoja "Siguiente pedido" (15 s) y la responde con las mismas funciones;
+  si tiene un pedido `en_cola`, muestra un cartel fijo. Con un viaje en curso, el modal normal del dashboard no
+  toca esa oferta (antes la rechazaba sola).
 - Sigue escribiendo `Cadetes.estado_cad` (`disponible` / `en_confirmacion` / `ocupado` / `desconectado`) y
   publicando Presence en `cadetes-disponibles`, que usa el radar del panel de admin.
 - Desde `asignado` en adelante (`en_camino_entrega`, `entregado`) el cadete sigue escribiendo el pedido
@@ -404,7 +423,12 @@ Con 3 a 5 sesiones de cadete (`Templates/dashboard.html?id_cad=N`) en turno:
 16. El cadete cierra la pestaña con una oferta abierta y vuelve a entrar → queda `disponible` y vuelve a recibir ofertas.
 17. Una pestaña vieja de la app de clientes o de cadetes (anterior al asignador del servidor) → sus escrituras
     sobre un pedido en búsqueda fallan con "La asignación de pedidos la maneja el servidor" y no alteran nada.
-18. Cadete en viaje y ningún otro en turno → un pedido nuevo espera hasta 60 s a que se libere (no se cancela al instante).
+18. Cadete en viaje y ningún otro en turno → al cadete le aparece "Siguiente pedido" durante el viaje. Si acepta,
+    el cliente ve "{nombre} está terminando otra entrega" y, al entregar el viaje, el pedido pasa solo a asignado.
+19. El cadete rechaza la oferta de cola → el pedido espera (hasta 15 min); cuando ese cadete entrega y queda libre,
+    se le ofrece normalmente.
+20. Un cadete con un pedido en cola no recibe otra oferta de cola; el cliente cancela un pedido en cola → al cadete
+    se le va el cartel y se le avisa.
 
 ---
 
@@ -422,11 +446,13 @@ Con 3 a 5 sesiones de cadete (`Templates/dashboard.html?id_cad=N`) en turno:
   `Templates/dashboard.html?id_cad=X`, `Templates/pedido_activo.html?id_cad=X&chat=1` o
   `templates/pedido_activo.html?id_pedido=N[&chat=1]`.
 - El service worker (`sw.js` de cada app, parte push copiada en las dos) no muestra el aviso si esa pantalla está visible.
-- Si se agrega un estado (ej: la cola `en_cola`), sumar su aviso en `enviar-push`.
+- Cola: la oferta a un cadete en viaje dice "Siguiente pedido"; al cliente se le avisa cuando su pedido entra en
+  la cola de un cadete y cuando ese cadete termina y va a retirarlo; al cadete, cuando el pedido en cola pasa a ser su viaje.
+- Si se agrega un estado, sumar su aviso en `enviar-push`.
 
 ## 14. Fuera de alcance / pendiente
 
-Estado al 15/11/2026: 14.1 está implementado; el resto sigue pendiente. Las funciones de servidor son las de
+Estado al 16/11/2026: 14.1 y 14.2 están implementados; el resto sigue pendiente. Las funciones de servidor son las de
 push (`suscribir-push`, `enviar-push`, Supabase Edge Functions) y el asignador (funciones de Postgres).
 
 ### 14.1 Asignador de pedidos en el servidor — HECHO (15/11/2026)
@@ -439,18 +465,12 @@ push (`suscribir-push`, `enviar-push`, Supabase Edge Functions) y el asignador (
   borrarla desde el panel de Supabase (Edge Functions → asignar-pedidos → Delete).
 - La carpeta `SistemaCadetes/netlify/edge-functions/` sigue vacía y no hace falta.
 
-### 14.2 Cola de pedidos
+### 14.2 Cola de pedidos — HECHO (16/11/2026)
 
-- Hoy, si no hay cadetes libres, el pedido espera como máximo 60 s y se cancela.
-  Agregar una cola para que los pedidos sin cadete esperen su turno y se asignen apenas se libere uno.
-- Nuevo estado `en_cola` en `Pedidos.estado_pedido`. Al agregarlo, actualizar:
-  - La tabla de estados (sección 2) y `ESTADOS_BUSQUEDA`.
-  - Los textos y chips de la UI (cliente, cadete y monitoreo del admin, que hoy muestra "Por Asignar").
-  - El aviso correspondiente en `enviar-push` (sección 13).
-- La cola la administra el asignador del servidor (sección 7). Sigue valiendo la regla de 7.1: el cadete NUNCA
-  toma pedidos de la cola por su cuenta; el asignador se los ofrece de a uno.
-- Falta definir el orden (por antigüedad o por cercanía al cadete que se libera), cuánto puede esperar un
-  pedido en la cola antes de cancelarse y qué ve el cliente mientras tanto.
+- Cola **por cadete**, no una fila general: el pedido se le ofrece a un cadete en viaje cuyo destino queda cerca
+  del retiro nuevo, y queda `en_cola` a su nombre hasta que entrega (ver sección 7.1 y 7.3).
+- Un pedido en cola por cadete; 15 minutos como máximo en la cola; 15 minutos de espera si nadie puede tomarlo.
+- Sigue valiendo la regla de 7.1: el cadete NUNCA toma pedidos por su cuenta; el servidor se los ofrece de a uno.
 
 ### 14.3 Otros pendientes del servidor
 
