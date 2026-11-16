@@ -2,7 +2,7 @@
 
 App web (mobile first) con la que los clientes piden un cadete, cotizan el envío, siguen el pedido en vivo y chatean con el cadete.
 
-Es un **sitio estático sin build**: HTML + módulos JS del navegador. Supabase (Auth, base de datos y Realtime), Tailwind, Leaflet y supabase-js se cargan por CDN con **versión fija**.
+Es un **sitio estático sin build**: HTML + módulos JS del navegador. Supabase (Auth, base de datos y Realtime), Leaflet y supabase-js se cargan por CDN con **versión fija**. Tailwind está **compilado** en `styles/tailwind.css` (se genera con `npm run css` y se commitea).
 
 Comparte el proyecto de Supabase con la **app de cadetes**, que vive en otro repo. Las dos apps se coordinan a través de la tabla `Pedidos` y de canales Realtime. Ese acuerdo es el [contrato con la app de cadetes](#contrato-con-la-app-de-cadetes) y **no se puede cambiar de un solo lado**.
 
@@ -47,7 +47,7 @@ Cada enlace es relativo **al archivo que lo escribe**: desde una página, un mó
 │   ├── ui_cliente.js         Barra superior e inferior, toasts, hojas modales, formatos, íconos
 │   ├── direcciones.js        Búsqueda de direcciones (índice local + Nominatim) y dirección de un punto
 │   ├── indice_direcciones.js Buscador sobre el índice local de Pico Truncado (sin DOM ni red)
-│   ├── tema_cliente.js       Colores y fuente de Tailwind
+│   ├── (el tema de Tailwind está en tailwind/cliente.config.cjs)
 │   └── verificar.mjs         Verificación estática (ver "Cómo no romperla"). No se publica
 │
 ├── styles/
@@ -222,7 +222,8 @@ No hay CI: la verificación se corre a mano antes de cada commit.
 - **Texto de usuarios siempre como texto:** `textContent`, o `escaparHtml()` si hay que armar HTML. Aplica a chat, direcciones, nombres, favoritas y `inform_pedido`. Nunca meterlo crudo en `innerHTML`.
 - **Escrituras sobre `Pedidos` siempre condicionales** (bloqueo optimista): `.eq('id_pedido', X).in('estado_pedido', [...])` y compañía. Si el UPDATE no devuelve filas, alguien cambió el pedido en el mismo instante; hay que releer, no pisar. Ver `script_asignacion.js`.
 - **Esta app no asigna cadetes.** No escribir `estado_pedido` ni `id_cadete` de un pedido en búsqueda (el servidor lo rechaza): la UI se arma leyendo la fila del pedido (`textoBusqueda()` en `busqueda_pedido.js`).
-- **Clases de Tailwind escritas completas** (`'bg-brand-accent'`, no `'bg-' + color`). El CDN genera las clases que encuentra en el DOM.
+- **Clases de Tailwind escritas completas** (`'bg-brand-accent'`, no `'bg-' + color`): la compilación solo incluye las clases que encuentra escritas en el HTML y el JS.
+- **Después de agregar o cambiar clases de Tailwind, o de tocar el tema** (`tailwind/cliente.config.cjs`): `npm run css` y commitear `styles/tailwind.css`. Si no, la clase nueva no tiene estilo. El `<link>` de `tailwind.css` va último en el `<head>`, para que gane sobre `estilos_cliente.css` igual que cuando lo insertaba el CDN.
 - **Un `<fieldset>` con contenido que scrollea lleva `min-w-0`**. Si no, ensancha la página más que la pantalla del celular.
 - Páginas nuevas: copiar la estructura de `dashboard.html` (`#appBar`, `#barraInferior`, `layout_previo.js`, `#cargandoPagina`, `#contenidoPagina`, y `data-pestana`/`data-titulo` en el `<body>`), llamar a `requerirCliente()` y `montarLayoutCliente()`, y si va en la barra inferior, sumarla a `PESTANAS` en `layout_previo.js`.
 
@@ -250,7 +251,7 @@ Todas están fijadas. **Actualizar de a una y probar**:
 | Dependencia | Dónde | Cómo actualizar |
 |---|---|---|
 | supabase-js `2.116.0` | `conexion_supabase.js` | Ver la última 2.x en <https://esm.sh/@supabase/supabase-js@2> (la primera línea muestra la versión) |
-| Tailwind CDN `3.4.17` | `<script>` de cada `.html` | Reemplazar en las 5 páginas que lo usan (todas menos `index.html` y `404.html`). **No pasar a v4 por CDN sin revisar**: cambia la configuración del tema |
+| Tailwind `3.4.17` (compilado) | `tailwind/compilar.mjs` | Cambiar la versión ahí y correr `npm run css`. **No pasar a v4 sin revisar**: cambia la configuración del tema |
 | Leaflet `1.9.4` | `<link>` y `<script>` de `crear_pedido`, `pedido_activo` y `configuracion` | Mismo número en CSS y JS |
 | serve `14.2.4` | `package.json` (solo desarrollo) | — |
 
@@ -270,5 +271,5 @@ La lista completa de pendientes (cola de pedidos, cálculos en el servidor y mej
 - **El total se calcula en el cliente** (`coste_pedido`). Con backend, recalcularlo del lado del servidor.
 - **El chat se guarda en `Pedidos.Chat_pedido`** además de ir por broadcast. Cliente y cadete escriben la misma columna sin bloqueo, así que `chat_pedido.js` guarda siempre la unión de mensajes y la repara si una escritura pisó a la otra. Con backend conviene pasarlo a una función que agregue el mensaje de forma atómica.
 - **Direcciones:** mientras se escribe, la app sugiere desde `datos/pico_truncado.json`, un índice de Pico Truncado armado con datos de OpenStreetMap (calles con número, esquinas, barrios y lugares). Los números que no están cargados en OSM se estiman con la numeración de la calle y la app avisa que la ubicación es aproximada. Lo que no está en el índice se busca con el botón en Nominatim, un servicio público con máximo 1 consulta por segundo y sin autocompletado. OSM tiene pocos comercios cargados: los que falten se pueden agregar en [openstreetmap.org](https://www.openstreetmap.org) y regenerar con `npm run indice`. Los datos son ODbL: el índice lleva la atribución.
-- **Tailwind por CDN** muestra un aviso en la consola de que no es para producción. Funciona igual; a futuro conviene compilarlo.
+- **Tailwind compilado y commiteado:** `styles/tailwind.css` es un archivo generado. No editarlo a mano; se regenera con `npm run css` (necesita internet la primera vez, para bajar Tailwind con `npx`).
 - **Teléfonos de prueba:** `549264123456` y `549264000000` (los que cargaba el prototipo) se tratan como "sin teléfono" y la app pide completarlo.

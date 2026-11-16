@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "npx --yes serve@14.2.4 --listen 5173 --no-clipboard .",
-    "verificar": "node scripts/verificar.mjs"
+    "verificar": "node scripts/verificar.mjs",
+    "css": "node tailwind/compilar.mjs"
   }
 }

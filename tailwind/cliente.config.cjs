@@ -1,6 +1,6 @@
-// Tema de Tailwind (CDN) compartido por las páginas de la app de clientes TodoDelivery.
-// Se alinea con la identidad estética de index.html (Naranja #FF5A1F, blanco y superficies limpias).
-tailwind.config = {
+// Tema de Tailwind de esta app (antes estaba dentro de cada página, para el CDN).
+// Después de cambiarlo, o de agregar clases nuevas en el HTML o el JS: npm run css
+const tema = {
   theme: {
     extend: {
       fontFamily: {
@@ -40,3 +40,4 @@ tailwind.config = {
   }
 };
 
+module.exports = { content: ["./templates/*.html", "./scripts/*.js", "./index.html", "./404.html"], ...tema };

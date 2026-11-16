@@ -144,7 +144,7 @@ for (const [nombre, codigo] of Object.entries(fuentes)) {
 const todoElCodigo = [...Object.values(htmls), ...Object.values(fuentes)].join('\n');
 const cdnSinVersion = [
   [/esm\.sh\/@supabase\/supabase-js(?!@\d+\.\d+\.\d+)/, 'supabase-js sin versión exacta (usar @X.Y.Z)'],
-  [/cdn\.tailwindcss\.com(?!\/\d+\.\d+\.\d+)/, 'Tailwind CDN sin versión exacta (usar cdn.tailwindcss.com/X.Y.Z)'],
+  [/cdn\.tailwindcss\.com/, 'Tailwind por CDN: se usa el CSS compilado styles/tailwind.css (npm run css)'],
   [/unpkg\.com\/leaflet(?!@\d+\.\d+\.\d+)/, 'Leaflet sin versión exacta (usar leaflet@X.Y.Z)']
 ];
 for (const archivo of archivos) {

@@ -482,8 +482,10 @@ push (`suscribir-push`, `enviar-push`, Supabase Edge Functions) y el asignador (
 
 ### 14.4 Mejoras menores
 
-- La distancia al cadete se mide en línea recta, no por calles. Evaluar una distancia por recorrido.
-- Tailwind se carga por CDN; compilarlo para producción.
+- La distancia al cadete se mide en línea recta, no por calles. Se evaluó el 16/11/2026 y se decidió dejarla así:
+  medir por calles obliga a que la base llame a un servicio externo de ruteo en cada pedido, y en una ciudad chica
+  el orden de cercanía casi no cambia.
+- Tailwind compilado — HECHO (16/11/2026) en las tres apps: `npm run css` genera el CSS y se commitea.
 - Avisos push en iPhone (hoy solo Chrome para Android).
 
 ### 14.5 No portear
