@@ -142,7 +142,7 @@
       montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar, abrirHoja,
       hojaDatosFavorita, montarCamposFavorita, pintarAvatar, emojiFavorita, icono
     } from '../scripts/ui_cliente.js';
-    import { CENTRO_MAPA, buscarDirecciones, direccionDeCoords } from '../scripts/direcciones.js';
+    import { CENTRO_MAPA, buscarDirecciones, buscarEnMapa, sugerirDirecciones, precargarIndice, direccionDeCoords } from '../scripts/direcciones.js';
 
     let clienteActual = null;
     let favoritas = [];
@@ -417,6 +417,8 @@
         let marcador = null;
         let consultaActual = 0;
         let resultados = [];
+        let numeroBusqueda = 0; // la respuesta de una búsqueda vieja no pisa la lista de una más nueva
+        let temporizadorSugerencias = null;
 
         const mostrarError = (mensaje) => {
           elError.textContent = mensaje;
@@ -469,7 +471,8 @@
 
         const ocultarResultados = () => q('[data-resultados]').classList.add('hidden');
 
-        const renderResultados = (lista, mensajeVacio) => {
+        // `textoBuscado`: si los resultados son del índice local, al final se ofrece buscarlo en todo el mapa
+        const renderResultados = (lista, mensajeVacio, textoBuscado = '') => {
           const ul = q('[data-resultados]');
           ul.textContent = '';
           ul.classList.remove('hidden');
@@ -490,44 +493,85 @@
             titulo.textContent = r.direccion.titulo;
             const zona = document.createElement('span');
             zona.className = 'block text-xs text-brand-textMuted truncate';
-            zona.textContent = r.direccion.zona;
+            zona.textContent = [r.detalle, r.direccion.zona].filter(Boolean).join(' · ');
             btn.append(titulo, zona);
             btn.addEventListener('click', () => {
               ocultarResultados();
               inputBusqueda.value = '';
               fijarPunto(r, { direccionConocida: r.direccion, centrar: true });
+              if (r.precision === 'aproximada' || r.precision === 'calle') {
+                mostrarToast('La ubicación es aproximada: revisá el pin y movelo si hace falta', { tipo: 'aviso', icono: '📍' });
+              }
             });
             li.append(btn);
             ul.append(li);
           });
+
+          if (textoBuscado && lista[0].fuente === 'indice') {
+            const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'w-full text-left px-3 py-2 text-xs font-bold text-brand-accent hover:bg-brand-surfaceLight focus:bg-brand-surfaceLight focus:outline-none';
+            btn.textContent = `¿No es ninguna? Buscar "${textoBuscado}" en todo el mapa`;
+            btn.addEventListener('click', () => buscar({ enTodoElMapa: true }));
+            li.append(btn);
+            ul.append(li);
+          }
         };
 
-        const buscar = async () => {
+        const sugerir = async () => {
+          const texto = inputBusqueda.value.trim();
+          if (texto.length < 2) return;
+          const numero = ++numeroBusqueda;
+          const sugerencias = await sugerirDirecciones(texto);
+          if (numero !== numeroBusqueda) return;
+          resultados = sugerencias;
+          if (sugerencias.length) renderResultados(sugerencias, '', texto);
+          else if (texto.length >= 3) renderResultados([], 'No está entre las calles y lugares de Pico Truncado. Tocá Buscar para buscar en todo el mapa.');
+        };
+
+        const buscar = async ({ enTodoElMapa = false } = {}) => {
+          clearTimeout(temporizadorSugerencias);
           const texto = inputBusqueda.value.trim();
           if (texto.length < 3) {
             renderResultados([], 'Escribí la calle y el número, o el nombre del lugar');
             return;
           }
+          const numero = ++numeroBusqueda;
           const btnBuscar = q('[data-buscar]');
           btnBuscar.disabled = true;
           renderResultados([], 'Buscando...');
           try {
-            resultados = await buscarDirecciones(texto, mapa?.getBounds().pad(2));
-            renderResultados(resultados, 'No encontramos esa dirección. Probá con calle y número, o tocá el mapa.');
+            const limites = mapa?.getBounds().pad(2);
+            const encontrados = enTodoElMapa ? await buscarEnMapa(texto, limites) : await buscarDirecciones(texto, limites);
+            if (numero !== numeroBusqueda) return;
+            resultados = encontrados;
+            renderResultados(resultados, 'No encontramos esa dirección. Probá con calle y número, o tocá el mapa.', texto);
           } catch (err) {
             console.warn('[Favoritas] Error en la búsqueda:', err);
-            renderResultados([], 'No pudimos buscar la dirección. Probá de nuevo o tocá el mapa.');
+            if (numero === numeroBusqueda) renderResultados([], 'No pudimos buscar la dirección. Probá de nuevo o tocá el mapa.');
           } finally {
             btnBuscar.disabled = false;
           }
         };
 
-        q('[data-buscar]').addEventListener('click', buscar);
+        q('[data-buscar]').addEventListener('click', () => buscar());
         inputBusqueda.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
             buscar();
           }
+        });
+        // Sugerencias del índice local mientras se escribe (Nominatim solo con el botón)
+        precargarIndice();
+        inputBusqueda.addEventListener('input', () => {
+          clearTimeout(temporizadorSugerencias);
+          if (!inputBusqueda.value.trim()) {
+            numeroBusqueda++;
+            ocultarResultados();
+            return;
+          }
+          temporizadorSugerencias = setTimeout(sugerir, 150);
         });
 
         q('[data-gps]').addEventListener('click', (e) => {

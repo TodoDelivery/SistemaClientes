@@ -84,6 +84,7 @@
   <script type="module">
     import { supabase } from '../scripts/conexion_supabase.js';
     import { ESTADOS_BUSQUEDA } from '../scripts/busqueda_pedido.js';
+    import { direccionDeCoords } from '../scripts/direcciones.js';
     import { PAGINAS, requerirCliente, esPedidoEnCurso, telefonoPendiente } from '../scripts/sesion_cliente.js';
     import {
       montarLayoutCliente, crearBotonAppBar, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast,
@@ -221,20 +222,61 @@
 
       lista.innerHTML = pedidos.map(p => {
         const estado = estadoUI(p);
+        const mensajes = cantidadMensajes(p.Chat_pedido);
         return `
           <a href="${urlPedido(p.id_pedido)}"
-            class="flex items-center gap-3 px-4 py-3.5 hover:bg-brand-surfaceLight active:bg-brand-surfaceHover transition-colors">
+            class="flex items-start gap-3 px-4 py-3.5 hover:bg-brand-surfaceLight active:bg-brand-surfaceHover transition-colors">
             <span class="w-11 h-11 rounded-2xl bg-brand-surfaceLight flex items-center justify-center text-xl shrink-0" aria-hidden="true">${emojiPaquete(p.tipo_paquete)}</span>
             <span class="flex-1 min-w-0">
-              <span class="block text-sm font-bold text-brand-dark truncate">${escaparHtml(p.inform_pedido || 'Envío')}</span>
-              <span class="block text-xs text-brand-textMuted truncate">${formatearFechaPedido(p.fecha_pedido)} · #${escaparHtml(p.id_pedido)}</span>
-            </span>
-            <span class="text-right shrink-0">
-              <span class="block text-sm font-extrabold text-brand-dark">${formatearPesos(p.coste_pedido)}</span>
-              <span class="inline-flex mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-bold ${estado.clases}">${escaparHtml(estado.texto)}</span>
+              <span class="flex items-baseline justify-between gap-2">
+                <span class="text-sm font-bold text-brand-dark truncate">${escaparHtml(p.inform_pedido || 'Envío')}</span>
+                <span class="text-sm font-extrabold text-brand-dark shrink-0">${formatearPesos(p.coste_pedido)}</span>
+              </span>
+              <span class="mt-1 flex items-center gap-1 text-xs text-brand-dark/80 min-w-0">
+                <span aria-hidden="true">🏪</span>
+                <span class="truncate" data-punto="${escaparHtml(`${p.latitud_org},${p.longitud_org}`)}">…</span>
+                <span class="shrink-0 text-brand-textMuted" aria-label="hasta">→</span>
+                <span aria-hidden="true">🏠</span>
+                <span class="truncate" data-punto="${escaparHtml(`${p.latitud_dest},${p.longitud_dest}`)}">…</span>
+              </span>
+              <span class="mt-1.5 flex items-center gap-2 text-xs text-brand-textMuted">
+                <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${estado.clases}">${escaparHtml(estado.texto)}</span>
+                <span class="truncate">${formatearFechaPedido(p.fecha_pedido)} · #${escaparHtml(p.id_pedido)}${p.tiempo_pedido ? ` · ${escaparHtml(p.tiempo_pedido)} min` : ''}</span>
+                ${mensajes ? `<span class="ml-auto shrink-0 font-bold" title="Mensajes del chat">💬 ${mensajes}</span>` : ''}
+              </span>
             </span>
           </a>`;
       }).join('');
+      completarDirecciones(lista);
+    }
+
+    function cantidadMensajes(chatTexto) {
+      try {
+        const lista = JSON.parse(chatTexto || '[]');
+        return Array.isArray(lista) ? lista.length : 0;
+      } catch {
+        return 0;
+      }
+    }
+
+    // Origen y destino escritos (el pedido guarda solo coordenadas). Se piden de a una (Nominatim) y
+    // quedan guardadas en el celular, así la próxima vez aparecen al instante
+    async function completarDirecciones(lista) {
+      for (const el of lista.querySelectorAll('[data-punto]')) {
+        const [lat, lng] = el.dataset.punto.split(',').map(Number);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || !lat || !lng) {
+          el.textContent = 'Sin ubicación';
+          continue;
+        }
+        try {
+          const d = await direccionDeCoords({ lat, lng });
+          if (!el.isConnected) return; // la lista se volvió a pintar
+          el.textContent = d?.titulo || 'Punto en el mapa';
+        } catch {
+          if (!el.isConnected) return;
+          el.textContent = 'Punto en el mapa';
+        }
+      }
     }
 
     function renderErrorHistorial() {

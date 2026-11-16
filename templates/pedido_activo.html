@@ -19,8 +19,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
     rel="stylesheet">
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- MapLibre GL: el mismo mapa vectorial de la app de cadetes (3D / 2D) -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <link rel="stylesheet" href="../styles/mapa_td.css" />
 
   <link rel="stylesheet" href="../styles/estilos_cliente.css" />
   <!-- Tailwind compilado (npm run css). Va último en el <head>, igual que lo dejaba el CDN -->
@@ -66,10 +68,9 @@
 
     <div id="trackingPanel" class="hidden flex flex-col gap-4">
 
-      <!-- Mapa: retiro, entrega y cadete -->
+      <!-- Mapa: retiro, entrega y cadete (lo arma scripts/mapa_seguimiento.js) -->
       <section id="contenedorMapaSeguimiento" aria-label="Mapa del recorrido"
-        class="relative isolate h-[34dvh] min-h-[220px] max-h-[340px] rounded-3xl overflow-hidden border border-brand-border bg-slate-100 shadow-card">
-        <div id="mapaSeguimiento" class="absolute inset-0"></div>
+        class="relative isolate h-[44dvh] min-h-[260px] max-h-[440px] rounded-3xl overflow-hidden border border-brand-border bg-[#0B0E14] shadow-card">
       </section>
 
       <!-- Estado del pedido -->
@@ -101,6 +102,10 @@
             class="h-12 rounded-xl bg-brand-accent text-white font-extrabold text-sm flex items-center justify-center shadow-btn hover:bg-brand-accentHover transition-colors">Pedir otro envío</a>
           <a href="dashboard.html"
             class="h-12 rounded-xl bg-white border border-brand-border text-brand-dark font-bold text-sm flex items-center justify-center hover:bg-brand-surfaceLight transition-colors">Mis pedidos</a>
+          <button id="btnReclamoFinal" type="button"
+            class="col-span-2 h-11 rounded-xl text-brand-danger font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-danger/10 transition-colors">
+            <span aria-hidden="true">🚩</span> Tuve un problema con este pedido
+          </button>
         </div>
       </section>
 
@@ -125,7 +130,7 @@
           <span id="telemetriaVelocidad" class="font-bold text-brand-accent shrink-0"></span>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div id="accionesCadete" class="grid grid-cols-3 gap-2">
           <a id="btnLlamarCadete" href="#"
             class="hidden h-12 rounded-xl bg-white border border-brand-border text-brand-dark font-bold text-sm flex items-center justify-center gap-2 hover:border-brand-accent/60 transition-colors">
             <svg class="w-5 h-5 text-brand-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -143,6 +148,14 @@
             Chat
             <span id="badgeNoLeidos" class="hidden min-w-5 h-5 px-1.5 rounded-full bg-brand-accent text-white text-xs font-black items-center justify-center"></span>
           </button>
+          <button id="btnReclamo" type="button" title="Reportar un problema"
+            class="h-12 rounded-xl bg-red-50 border border-brand-danger/25 text-brand-danger font-bold text-sm flex items-center justify-center gap-2 hover:border-brand-danger/60 transition-colors">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 22V4a1 1 0 0 1 1-1h12l-2 4 2 4H5" />
+            </svg>
+            Reclamo
+          </button>
         </div>
       </section>
 
@@ -159,6 +172,24 @@
             <p class="text-xs text-brand-textMuted">Efectivo</p>
           </div>
         </div>
+
+        <!-- Recorrido: retiro → entrega -->
+        <ol class="mt-4 relative pl-7 space-y-3" aria-label="Recorrido">
+          <span class="absolute left-[9px] top-3 bottom-3 w-0.5 bg-brand-border" aria-hidden="true"></span>
+          <li class="relative">
+            <span class="absolute -left-7 top-0.5 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow flex items-center justify-center text-[10px]" aria-hidden="true">🏪</span>
+            <p class="text-xs font-bold text-brand-textMuted">Retiro</p>
+            <p id="labelDireccionOrg" class="text-sm font-semibold text-brand-dark break-words">—</p>
+          </li>
+          <li class="relative">
+            <span class="absolute -left-7 top-0.5 w-5 h-5 rounded-full bg-amber-400 border-2 border-white shadow flex items-center justify-center text-[10px]" aria-hidden="true">🏠</span>
+            <p class="text-xs font-bold text-brand-textMuted">Entrega</p>
+            <p id="labelDireccionDest" class="text-sm font-semibold text-brand-dark break-words">—</p>
+          </li>
+        </ol>
+
+        <!-- Datos del pedido: se completan según lo que haya -->
+        <dl id="datosPedido" class="mt-4 grid grid-cols-2 gap-2"></dl>
       </section>
 
       <!-- Chat con el cadete -->
@@ -198,17 +229,21 @@
     import { supabase } from '../scripts/conexion_supabase.js';
     import { ESTADOS_BUSQUEDA, ESTADOS_OFERTA, textoBusqueda, cancelarBusquedaPorCliente } from '../scripts/busqueda_pedido.js';
     import { requerirCliente, buscarPedidoEnCurso, registrarLimpiezaAntesDeSalir } from '../scripts/sesion_cliente.js';
-    import { rutaPorCalles } from '../scripts/direcciones.js';
+    import { direccionDeCoords } from '../scripts/direcciones.js';
+    import { crearMapaSeguimiento } from '../scripts/mapa_seguimiento.js';
+    import { iniciarReclamo } from '../scripts/reclamos.js';
     import { crearHistorialChat } from '../scripts/chat_pedido.js';
     import { permisoAvisos, dijoAhoraNo, recordarAhoraNo, activarAvisos, sincronizarAvisos } from '../scripts/avisos_push.js';
     import {
       montarLayoutCliente, marcarSeguimientoActivo, mostrarErrorPagina, mostrarToast, confirmar,
-      formatearPesos, formatearFechaPedido, emojiPaquete, textoPaquete, iniciales
+      formatearPesos, formatearFechaPedido, emojiPaquete, textoPaquete, iniciales, escaparHtml
     } from '../scripts/ui_cliente.js';
 
     const ESTADOS_CON_CADETE = ['asignado', 'en_camino_entrega', 'entregado', 'rendido'];
     const ESTADOS_CHAT = ['asignado', 'en_camino_entrega'];
     const ESTADOS_FINALES = ['entregado', 'rendido', 'cancelado'];
+    // El cliente puede cancelar mientras se busca cadete y con el cadete yendo al local (no cuando ya retiró)
+    const ESTADOS_CANCELABLES_CON_CADETE = ['asignado'];
     // Orden en que avanza un pedido: un evento atrasado no puede volver a mostrar una etapa anterior
     const ETAPA_ESTADO = { pendiente: 0, libre: 0, en_confirmacion: 0, en_cola: 0, asignado: 1, en_camino_entrega: 2, entregado: 3, rendido: 4, cancelado: 5 };
     const PASOS = ['Buscando', 'Asignado', 'En camino', 'Entregado'];
@@ -227,9 +262,8 @@
     const RELECTURA_BUSQUEDA_MS = 5000;
     const nombresCadetes = new Map(); // id_cad -> nombre (para "Ofreciendo a ...")
 
-    let mapaSeguimiento = null;
-    let puntosRuta = [];
-    let markerCadete = null;
+    let mapa = null;              // mapa de seguimiento (scripts/mapa_seguimiento.js)
+    let posicionPendiente = null; // ubicación del cadete que llegó antes de que el mapa estuviera listo
 
     let ultimaSenalGps = 0;
     let relojGps = null;
@@ -305,6 +339,8 @@
 
       $('btnIrAlChat').addEventListener('click', irAlChat);
       $('btnCancelarPedido').addEventListener('click', handleCancelarPedido);
+      $('btnReclamo').addEventListener('click', () => pedidoActivo && iniciarReclamo(pedidoActivo));
+      $('btnReclamoFinal').addEventListener('click', () => pedidoActivo && iniciarReclamo(pedidoActivo));
 
       // Mensajes no leídos: se cuentan mientras el chat no está a la vista
       new IntersectionObserver(([entrada]) => {
@@ -352,6 +388,8 @@
       $('labelTipoFecha').textContent = [textoPaquete(pedido.tipo_paquete), formatearFechaPedido(pedido.fecha_pedido)].filter(Boolean).join(' · ');
       $('labelCostePedido').textContent = formatearPesos(pedido.coste_pedido);
       $('emojiPaquete').textContent = emojiPaquete(pedido.tipo_paquete);
+      mostrarDireccion($('labelDireccionOrg'), pedido.latitud_org, pedido.longitud_org);
+      mostrarDireccion($('labelDireccionDest'), pedido.latitud_dest, pedido.longitud_dest);
 
       inicializarMapaSeguimiento(pedido);
       iniciarChat(pedido);
@@ -478,8 +516,13 @@
 
       renderPasos(estado);
       $('avisoBusqueda').classList.toggle('hidden', !enBusqueda);
-      $('btnCancelarPedido').classList.toggle('hidden', !enBusqueda);
+      const cancelable = enBusqueda || (conCadete && ESTADOS_CANCELABLES_CON_CADETE.includes(estado));
+      $('btnCancelarPedido').classList.toggle('hidden', !cancelable);
       $('accionesFinales').classList.toggle('hidden', !finalizado);
+      // Con el pedido terminado, el reclamo va abajo del estado; en viaje, en la tarjeta del cadete
+      $('btnReclamo').classList.toggle('hidden', finalizado);
+      mapa?.setEstado(estado);
+      renderDatosPedido();
       $('tarjetaCadete').classList.toggle('hidden', !conCadete);
       // En un pedido ya realizado el chat queda a la vista pero solo para leer (antes se ocultaba entero)
       const chatAbierto = ESTADOS_CHAT.includes(estado) && Boolean(idCadete);
@@ -546,14 +589,23 @@
     async function handleCancelarPedido() {
       if (!pedidoActivo) return;
       const idPedido = pedidoActivo.id_pedido;
+      const conCadete = ESTADOS_CANCELABLES_CON_CADETE.includes(pedidoActivo.estado_pedido);
 
-      const confirmado = await confirmar({
-        titulo: '¿Cancelar el pedido?',
-        mensaje: 'Dejamos de buscar cadete (o lo sacamos de su cola) y el pedido queda cancelado.',
-        textoConfirmar: 'Sí, cancelar pedido',
-        textoCancelar: 'No, seguir buscando',
-        peligro: true
-      });
+      const confirmado = await confirmar(conCadete
+        ? {
+          titulo: '¿Cancelar el pedido?',
+          mensaje: `${nombreCadete === 'Tu cadete' ? 'El cadete' : nombreCadete} ya va camino a retirarlo. Le avisamos que lo cancelaste y queda libre para otro viaje.\nNo tiene cargo.`,
+          textoConfirmar: 'Sí, cancelar pedido',
+          textoCancelar: 'No, seguir con el pedido',
+          peligro: true
+        }
+        : {
+          titulo: '¿Cancelar el pedido?',
+          mensaje: 'Dejamos de buscar cadete (o lo sacamos de su cola) y el pedido queda cancelado.',
+          textoConfirmar: 'Sí, cancelar pedido',
+          textoCancelar: 'No, seguir buscando',
+          peligro: true
+        });
       if (!confirmado || !esPedidoEnPantalla(idPedido)) return;
 
       const btn = $('btnCancelarPedido');
@@ -563,7 +615,9 @@
       try {
         const cancelado = await cancelarBusquedaPorCliente(idPedido);
         if (!cancelado) {
-          mostrarToast('El pedido ya no se puede cancelar: cambió de estado mientras tanto.', { tipo: 'aviso' });
+          mostrarToast(conCadete
+            ? 'Ya no se puede cancelar: el cadete retiró el pedido y va en camino.'
+            : 'El pedido ya no se puede cancelar: cambió de estado mientras tanto.', { tipo: 'aviso' });
         }
         const actualizado = await leerPedido(idPedido);
         if (actualizado) aplicarCambioPedido(actualizado);
@@ -604,6 +658,7 @@
         $('cadeteVehiculo').textContent = cadete.vehiculo_cad || 'Vehículo sin cargar';
         actualizarInsigniaPatente(cadete.patente);
         configurarBotonLlamar(cadete.telef_cad);
+        renderDatosPedido();
         if (!ultimaSenalGps) setGpsStatus('Esperando señal GPS');
       } catch (e) {
         idCadeteCargado = null;
@@ -671,68 +726,63 @@
     // MAPA DE SEGUIMIENTO
     // -------------------------------------------------------------------------
     function inicializarMapaSeguimiento(pedido) {
-      const org = coordenadas(pedido.latitud_org, pedido.longitud_org);
-      const dest = coordenadas(pedido.latitud_dest, pedido.longitud_dest);
-
-      if (typeof L === 'undefined' || !org || !dest) {
-        $('contenedorMapaSeguimiento').classList.add('hidden');
-        return;
-      }
-
-      mapaSeguimiento = L.map('mapaSeguimiento', { zoomControl: false });
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OSM'
-      }).addTo(mapaSeguimiento);
-
-      L.marker(org, { icon: crearIconoMapa('A', 'bg-emerald-600 text-white shadow-emerald-500/40'), interactive: false }).addTo(mapaSeguimiento);
-      L.marker(dest, { icon: crearIconoMapa('B', 'bg-brand-accent text-white shadow-brand-accent/40'), interactive: false }).addTo(mapaSeguimiento);
-      // Línea recta hasta que llega el trazado por calles
-      const lineaRuta = L.polyline([org, dest], { color: '#FF5A1F', weight: 4, dashArray: '8, 8', opacity: 0.85 }).addTo(mapaSeguimiento);
-      rutaPorCalles({ lat: org[0], lng: org[1] }, { lat: dest[0], lng: dest[1] }).then(porCalles => {
-        if (porCalles) lineaRuta.setLatLngs(porCalles).setStyle({ weight: 5, dashArray: null, opacity: 0.9 });
-      });
-
-      puntosRuta = [org, dest];
-      encuadrarMapa();
-    }
-
-    function encuadrarMapa() {
-      if (!mapaSeguimiento) return;
-      const puntos = markerCadete ? [...puntosRuta, markerCadete.getLatLng()] : puntosRuta;
-      mapaSeguimiento.fitBounds(L.latLngBounds(puntos), { padding: [40, 40], maxZoom: 16 });
-    }
-
-    function moverMarcadorCadete(lat, lng) {
-      if (!mapaSeguimiento) return;
-
-      if (markerCadete) {
-        markerCadete.setLatLng([lat, lng]);
-        return;
-      }
-
-      markerCadete = L.marker([lat, lng], {
-        icon: crearIconoMapa('🛵', 'bg-brand-accent text-white shadow-brand-accent/40', 40),
-        interactive: false,
-        zIndexOffset: 1000
-      }).addTo(mapaSeguimiento);
-      encuadrarMapa();
-    }
-
-    function crearIconoMapa(contenido, clasesColor, tamano = 34) {
-      return L.divIcon({
-        className: '',
-        html: `<div style="width:${tamano}px;height:${tamano}px" class="rounded-full ${clasesColor} border-2 border-white flex items-center justify-center font-black text-sm shadow-lg">${contenido}</div>`,
-        iconSize: [tamano, tamano],
-        iconAnchor: [tamano / 2, tamano / 2]
+      const marco = $('contenedorMapaSeguimiento');
+      crearMapaSeguimiento(marco, pedido).then(creado => {
+        if (!creado) {
+          marco.classList.add('hidden');
+          return;
+        }
+        if (paginaCerrada) {
+          creado.destruir();
+          return;
+        }
+        mapa = creado;
+        mapa.setEstado(pedidoActivo?.estado_pedido);
+        if (posicionPendiente && tieneCadeteAsignado()) mapa.moverCadete(posicionPendiente.lat, posicionPendiente.lng);
+        posicionPendiente = null;
       });
     }
 
-    function coordenadas(lat, lng) {
-      if (lat == null || lng == null) return null;
-      const la = Number(lat);
-      const ln = Number(lng);
-      return Number.isFinite(la) && Number.isFinite(ln) ? [la, ln] : null;
+    function moverMarcadorCadete(lat, lng, rumbo = null) {
+      if (!mapa) {
+        posicionPendiente = { lat, lng };
+        return;
+      }
+      mapa.moverCadete(lat, lng, rumbo);
+    }
+
+    // Dirección escrita de un punto (el pedido guarda solo coordenadas); nunca muestra coordenadas
+    function mostrarDireccion(el, lat, lng) {
+      const la = Number(lat), ln = Number(lng);
+      if (!Number.isFinite(la) || !Number.isFinite(ln) || !la || !ln) {
+        el.textContent = 'Sin ubicación guardada';
+        return;
+      }
+      el.textContent = 'Buscando la dirección…';
+      direccionDeCoords({ lat: la, lng: ln })
+        .then(d => { el.textContent = d ? [d.titulo, d.zona].filter(Boolean).join(' · ') : 'Marcado en el mapa'; })
+        .catch(() => { el.textContent = 'Marcado en el mapa'; });
+    }
+
+    // Datos del pedido en fichas chicas: solo los que hay según el estado
+    function renderDatosPedido() {
+      if (!pedidoActivo) return;
+      const p = pedidoActivo;
+      const datos = [];
+      const fecha = new Date(p.fecha_pedido);
+      if (!Number.isNaN(fecha.getTime())) {
+        datos.push(['Pedido', fecha.toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })]);
+      }
+      if (p.tiempo_pedido) datos.push(['Duración del viaje', `${p.tiempo_pedido} min`]);
+      if (ESTADOS_CON_CADETE.includes(p.estado_pedido) && p.id_cadete && nombreCadete !== 'Tu cadete') datos.push(['Cadete', nombreCadete]);
+      if (p.estado_pedido === 'cancelado') datos.push(['Motivo', p.motivo_cancelacion || 'Cancelado']);
+      datos.push(['Número', `#${p.id_pedido}`]);
+
+      $('datosPedido').innerHTML = datos.map(([titulo, valor], i) => `
+        <div class="min-w-0 px-3 py-2.5 rounded-xl bg-brand-surfaceLight/80 border border-brand-border/50 ${datos.length % 2 && i === datos.length - 1 ? 'col-span-2' : ''}">
+          <dt class="text-[11px] font-bold text-brand-textMuted">${escaparHtml(titulo)}</dt>
+          <dd class="text-sm font-bold text-brand-dark truncate">${escaparHtml(valor)}</dd>
+        </div>`).join('');
     }
 
     // -------------------------------------------------------------------------
@@ -755,7 +805,8 @@
             const lat = Number(payload.coords.lat);
             const lng = Number(payload.coords.lng);
             const speed = Number(payload.coords.speed) || 0;
-            if (Number.isFinite(lat) && Number.isFinite(lng)) moverMarcadorCadete(lat, lng);
+            const rumbo = payload.coords.heading == null ? null : Number(payload.coords.heading);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) moverMarcadorCadete(lat, lng, rumbo);
             $('telemetriaVelocidad').textContent = speed ? `${Math.round(speed * 3.6)} km/h` : '';
             registrarSenalGps();
           }
@@ -997,6 +1048,8 @@
       clearInterval(relojBusqueda);
       relojBusqueda = null;
       chat?.cerrar();
+      mapa?.destruir();
+      mapa = null;
       if (channelPedidoPrivado) {
         supabase.removeChannel(channelPedidoPrivado);
         channelPedidoPrivado = null;

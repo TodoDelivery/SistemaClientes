@@ -208,7 +208,8 @@
       estadoUI, formatearPesos, icono, emojiFavorita
     } from '../scripts/ui_cliente.js';
     import {
-      CENTRO_MAPA, buscarDirecciones, direccionDeCoords, direccionEnCache, recordarDireccion, claveCoords, distanciaMetros, rutaPorCalles
+      CENTRO_MAPA, buscarDirecciones, buscarEnMapa, sugerirDirecciones, precargarIndice,
+      direccionDeCoords, direccionEnCache, recordarDireccion, claveCoords, distanciaMetros, rutaPorCalles
     } from '../scripts/direcciones.js';
 
     // Valores por defecto si Datos_cotiz no responde o no tiene filas
@@ -241,6 +242,8 @@
     const direcciones = { origen: null, destino: null }; // { titulo, zona } | 'cargando' | null
     const temporizadoresDireccion = {};
     let resultadosBusqueda = [];
+    let numeroBusqueda = 0; // la respuesta de una búsqueda vieja no pisa la lista de una más nueva
+    let temporizadorSugerencias = null;
     let favoritas = [];
 
     const $ = (id) => document.getElementById(id);
@@ -305,7 +308,7 @@
       });
 
       const inputBusqueda = $('inpBuscarDireccion');
-      $('btnBuscarDireccion').addEventListener('click', buscarDireccion);
+      $('btnBuscarDireccion').addEventListener('click', () => buscarDireccion());
       inputBusqueda.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault(); // el buscador está dentro del formulario del pedido
@@ -314,8 +317,16 @@
           ocultarResultados();
         }
       });
+      // Sugerencias del índice local mientras se escribe (Nominatim solo con el botón)
+      precargarIndice();
       inputBusqueda.addEventListener('input', () => {
-        if (!inputBusqueda.value.trim()) ocultarResultados();
+        clearTimeout(temporizadorSugerencias);
+        if (!inputBusqueda.value.trim()) {
+          numeroBusqueda++;
+          ocultarResultados();
+          return;
+        }
+        temporizadorSugerencias = setTimeout(sugerirDireccion, 150);
       });
       document.addEventListener('click', (e) => {
         if (!e.target.closest('#zonaBusqueda')) ocultarResultados();
@@ -559,30 +570,47 @@
       }, 600);
     }
 
-    async function buscarDireccion() {
+    async function sugerirDireccion() {
+      const texto = $('inpBuscarDireccion').value.trim();
+      if (texto.length < 2) return;
+      const numero = ++numeroBusqueda;
+      const sugerencias = await sugerirDirecciones(texto);
+      if (numero !== numeroBusqueda) return;
+      resultadosBusqueda = sugerencias;
+      if (sugerencias.length) renderResultados(sugerencias, '', texto);
+      else if (texto.length >= 3) renderResultados([], 'No está entre las calles y lugares de Pico Truncado. Tocá Buscar para buscar en todo el mapa.');
+    }
+
+    async function buscarDireccion({ enTodoElMapa = false } = {}) {
+      clearTimeout(temporizadorSugerencias);
       const texto = $('inpBuscarDireccion').value.trim();
       if (texto.length < 3) {
         mostrarToast('Escribí la calle y el número, o el nombre del lugar', { tipo: 'aviso' });
         return;
       }
 
+      const numero = ++numeroBusqueda;
       const btn = $('btnBuscarDireccion');
       btn.disabled = true;
       renderResultados([], 'Buscando...');
 
       try {
         // Prioriza resultados cerca de lo que se ve en el mapa
-        resultadosBusqueda = await buscarDirecciones(texto, pickerMap?.getBounds().pad(2));
-        renderResultados(resultadosBusqueda, 'No encontramos esa dirección. Probá con calle y número, o tocá el mapa.');
+        const limites = pickerMap?.getBounds().pad(2);
+        const resultados = enTodoElMapa ? await buscarEnMapa(texto, limites) : await buscarDirecciones(texto, limites);
+        if (numero !== numeroBusqueda) return;
+        resultadosBusqueda = resultados;
+        renderResultados(resultadosBusqueda, 'No encontramos esa dirección. Probá con calle y número, o tocá el mapa.', texto);
       } catch (err) {
         console.warn('[Direcciones] Error en la búsqueda:', err);
-        renderResultados([], 'No pudimos buscar la dirección. Probá de nuevo o tocá el mapa.');
+        if (numero === numeroBusqueda) renderResultados([], 'No pudimos buscar la dirección. Probá de nuevo o tocá el mapa.');
       } finally {
         btn.disabled = false;
       }
     }
 
-    function renderResultados(lista, mensajeVacio) {
+    // `textoBuscado`: si los resultados son del índice local, al final se ofrece buscarlo en todo el mapa
+    function renderResultados(lista, mensajeVacio, textoBuscado = '') {
       const ul = $('resultadosBusqueda');
       ul.textContent = '';
       ul.classList.remove('hidden');
@@ -605,12 +633,23 @@
         titulo.textContent = r.direccion.titulo;
         const zona = document.createElement('span');
         zona.className = 'block text-xs text-brand-textMuted truncate';
-        zona.textContent = r.direccion.zona;
+        zona.textContent = [r.detalle, r.direccion.zona].filter(Boolean).join(' · ');
         btn.append(titulo, zona);
         btn.addEventListener('click', () => elegirResultado(i));
         li.append(btn);
         ul.append(li);
       });
+
+      if (textoBuscado && lista[0].fuente === 'indice') {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'w-full text-left px-4 py-2.5 text-xs font-bold text-brand-accent hover:bg-brand-surfaceLight focus:bg-brand-surfaceLight focus:outline-none';
+        btn.textContent = `¿No es ninguna? Buscar "${textoBuscado}" en todo el mapa`;
+        btn.addEventListener('click', () => buscarDireccion({ enTodoElMapa: true }));
+        li.append(btn);
+        ul.append(li);
+      }
     }
 
     function elegirResultado(indice) {
@@ -621,6 +660,9 @@
       input.value = '';
       input.blur();
       establecerPunto(modoSeleccion, r, { via: 'busqueda', direccion: r.direccion });
+      if (r.precision === 'aproximada' || r.precision === 'calle') {
+        mostrarToast('La ubicación es aproximada: revisá el pin y movelo si hace falta', { tipo: 'aviso', icono: '📍' });
+      }
     }
 
     function ocultarResultados() {

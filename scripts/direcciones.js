@@ -1,11 +1,47 @@
 // =========================================================================
-// DIRECCIONES: BÚSQUEDA Y DIRECCIÓN DE UN PUNTO (Nominatim / OpenStreetMap)
+// DIRECCIONES: BÚSQUEDA Y DIRECCIÓN DE UN PUNTO
 // =========================================================================
-// Política de uso del servicio público de Nominatim: máximo 1 consulta por segundo y sin autocompletar.
-// Por eso las búsquedas son con botón (no mientras se escribe) y las consultas se encolan.
+// Primero se busca en el índice local de Pico Truncado (datos/pico_truncado.json, ver
+// indice_direcciones.js), que permite sugerir mientras se escribe. Lo que no está ahí se busca en
+// Nominatim (OpenStreetMap), cuya política de uso es máximo 1 consulta por segundo y sin
+// autocompletar: por eso esa búsqueda es con botón y las consultas se encolan.
+import { crearBuscador } from './indice_direcciones.js';
 
-// Centro inicial de los mapas (San Juan, Argentina)
-export const CENTRO_MAPA = { lat: -31.5375, lng: -68.5364 };
+// Centro inicial de los mapas (Pico Truncado, Santa Cruz)
+export const CENTRO_MAPA = { lat: -46.7992, lng: -67.9577 };
+
+const URL_INDICE = new URL('../datos/pico_truncado.json', import.meta.url);
+let buscadorLocal = null; // Promise<buscador | null>
+
+function cargarIndice() {
+  buscadorLocal ??= fetch(URL_INDICE)
+    .then(respuesta => {
+      if (!respuesta.ok) throw new Error(`el índice respondió ${respuesta.status}`);
+      return respuesta.json();
+    })
+    .then(crearBuscador)
+    .catch(err => {
+      console.warn('[Direcciones] No se pudo cargar el índice local, se usa solo Nominatim:', err.message);
+      buscadorLocal = null; // se reintenta en la próxima búsqueda
+      return null;
+    });
+  return buscadorLocal;
+}
+
+/** Empieza a bajar el índice local para que la primera sugerencia no espere */
+export function precargarIndice() {
+  cargarIndice();
+}
+
+/**
+ * Sugerencias del índice local, para mostrar mientras se escribe. [] si no hay o si no cargó.
+ * Además de { lat, lng, direccion }, cada una trae `precision` ('exacta' | 'aproximada' | 'calle'),
+ * `detalle` (texto corto para la lista: "Esquina", "Farmacia", "Altura aproximada"...) y `fuente: 'indice'`.
+ */
+export async function sugerirDirecciones(texto) {
+  const buscador = await cargarIndice();
+  return buscador ? buscador.buscar(texto) : [];
+}
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
 const cache = new Map(); // "lat,lng" (5 decimales) -> { titulo, zona } | null
@@ -54,17 +90,52 @@ export async function direccionDeCoords(coords) {
   const clave = claveCoords(coords);
   if (cache.has(clave)) return cache.get(clave);
 
+  // Las encontradas quedan guardadas en el celular: el historial no vuelve a consultar los mismos puntos
+  const guardada = leerGuardadas()[clave];
+  if (guardada) {
+    cache.set(clave, guardada);
+    return guardada;
+  }
+
   const r = await consultarNominatim('reverse', { lat: coords.lat, lon: coords.lng, zoom: 18, addressdetails: 1 });
   const direccion = r && !r.error ? resumirDireccion(r) : null;
   cache.set(clave, direccion);
+  if (direccion) guardarDireccion(clave, direccion);
   return direccion;
 }
 
+const CLAVE_GUARDADAS = 'td_direcciones_puntos';
+const MAX_GUARDADAS = 300;
+
+function leerGuardadas() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_GUARDADAS)) || {}; } catch { return {}; }
+}
+
+function guardarDireccion(clave, direccion) {
+  try {
+    const todas = leerGuardadas();
+    delete todas[clave];
+    todas[clave] = direccion;
+    const claves = Object.keys(todas);
+    claves.slice(0, Math.max(0, claves.length - MAX_GUARDADAS)).forEach(k => delete todas[k]); // las más viejas
+    localStorage.setItem(CLAVE_GUARDADAS, JSON.stringify(todas));
+  } catch { /* sin almacenamiento: queda solo en memoria */ }
+}
+
 /**
- * Busca direcciones en Argentina. `limites` (L.LatLngBounds opcional) prioriza lo cercano a lo que se ve.
- * @returns {Promise<Array<{ lat, lng, direccion: { titulo, zona } }>>}
+ * Busca en el índice local y, si ahí no hay nada, en Nominatim (con el botón Buscar).
+ * Cada resultado dice de dónde salió en `fuente` ('indice' | 'mapa').
  */
 export async function buscarDirecciones(texto, limites = null) {
+  const locales = await sugerirDirecciones(texto);
+  return locales.length ? locales : buscarEnMapa(texto, limites);
+}
+
+/**
+ * Busca direcciones en Argentina con Nominatim. `limites` (L.LatLngBounds opcional) prioriza lo cercano a lo que se ve.
+ * @returns {Promise<Array<{ lat, lng, direccion: { titulo, zona }, fuente: 'mapa' }>>}
+ */
+export async function buscarEnMapa(texto, limites = null) {
   const params = { q: texto, countrycodes: 'ar', limit: 5, addressdetails: 1 };
   if (limites) {
     params.viewbox = [limites.getWest(), limites.getNorth(), limites.getEast(), limites.getSouth()].map(n => n.toFixed(4)).join(',');
@@ -72,7 +143,7 @@ export async function buscarDirecciones(texto, limites = null) {
 
   const resultados = await consultarNominatim('search', params);
   return (resultados || [])
-    .map(r => ({ lat: Number(r.lat), lng: Number(r.lon), direccion: resumirDireccion(r) }))
+    .map(r => ({ lat: Number(r.lat), lng: Number(r.lon), direccion: resumirDireccion(r), fuente: 'mapa' }))
     .filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng) && r.direccion)
     .map(r => {
       recordarDireccion(r, r.direccion);
