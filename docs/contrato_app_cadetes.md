@@ -4,6 +4,9 @@
 
 Hay que construir la app de Clientes definitiva de "Todo Delivery" replicando la funcionalidad del prototipo
 `pruebas_pedidos/prueba_insercion_pedidos.html` (un solo HTML con Supabase JS v2, Leaflet y Tailwind).
+Ese prototipo asignaba desde el navegador (modelo P2P) y se borró del repo de cadetes el 16/11/2026 porque estaba
+publicado y podía ofrecerles pedidos a los cadetes salteando al servidor; queda en el historial de git de
+`SistemaCadetes`.
 
 La app es independiente del framework que se elija, pero debe respetar AL PIE DE LA LETRA:
 - El modelo de datos y los estados de la sección 2.
